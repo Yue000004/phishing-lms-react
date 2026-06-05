@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { 
   MdArrowBack, 
   MdArchive, 
@@ -14,54 +16,45 @@ import {
   MdVerifiedUser
 } from 'react-icons/md';
 
+/**
+ * Task 3 & 9: 使用 ReactMarkdown 渲染信件並實作事件代理
+ */
 const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => {
   const [showDetails, setShowDetails] = useState(false);
   const contentRef = useRef(null);
   const hoverTimerRef = useRef(null);
-  const [hoveredUrl, setHoveredUrl] = useState(null);
 
-  // Task 3: 實作強大的事件委派攔截點擊
+  // Task 3: 攔截點擊
   const handleBodyClick = (e) => {
     const target = e.target.closest('a, button, .phishing-link');
-    
     if (target) {
       e.preventDefault();
       e.stopPropagation();
-      
       const href = target.getAttribute('href') || '#';
-      console.log('🚨 攔截到動態內容點擊:', target.tagName, '網址:', href);
-      
-      if (onLinkClick) {
-        onLinkClick(href);
-      }
+      if (onLinkClick) onLinkClick(href);
     }
   };
 
-  // Task 3: 修復懸停偵測 (Event Delegation)
+  // Task 3 & 4: 偵測懸停 (Event Delegation)
   const handleMouseOver = (e) => {
     const target = e.target.closest('a, button, .phishing-link');
     if (target) {
       const href = target.getAttribute('href') || '模擬連結';
-      if (!hoveredUrl) {
-        hoverTimerRef.current = setTimeout(() => {
-          setHoveredUrl(href);
-          if (onHoverTrack) onHoverTrack(href, true); // 回報給 App.jsx
-        }, 800); // 停留超過 0.8 秒視為「有檢查」
-      }
+      // 顯示左下角狀態列 (回報給 App.jsx)
+      if (onHoverTrack) onHoverTrack(href, true);
     }
   };
 
   const handleMouseOut = (e) => {
     const target = e.target.closest('a, button, .phishing-link');
     if (target) {
-      setHoveredUrl(null);
-      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
       if (onHoverTrack) onHoverTrack(null, false);
     }
   };
 
   const formatCurrentTime = () => {
-    return new Date().toLocaleString('zh-TW', { 
+    const date = email?.timestamp ? new Date(email.timestamp) : new Date();
+    return date.toLocaleString('zh-TW', { 
       hour12: true, 
       month: 'long', 
       day: 'numeric', 
@@ -113,16 +106,16 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
       {/* 信件內容區 */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-normal text-gray-900 mb-6 md:mb-8 md:ml-14">{email.subject}</h1>
+          <h1 className="text-xl md:text-2xl font-normal text-gray-900 mb-6 md:mb-8 md:ml-14 italic font-black">{email.subject}</h1>
 
           <div className="flex items-start gap-3 md:gap-4 mb-8">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-base md:text-lg flex-shrink-0 font-medium">
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-base md:text-lg flex-shrink-0 font-medium shadow-md">
               {email.senderName ? email.senderName[0] : 'U'}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-bold text-gray-900 text-sm md:text-base">{email.senderName}</span>
-                <span className="text-gray-500 text-[10px] md:text-xs truncate max-w-[150px] md:max-w-none">
+                <span className="text-gray-500 text-[10px] md:text-xs truncate">
                   {showDetails ? `<${email.senderEmail}>` : `<${email.senderEmail?.split('@')[0]?.substring(0, 3)}...@...>`}
                 </span>
                 <button 
@@ -134,10 +127,9 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
               </div>
               {showDetails && (
                 <div className="mt-2 p-3 bg-white border border-gray-200 rounded-xl shadow-lg text-xs md:text-sm text-gray-600 space-y-1 z-20 relative">
-                  <div><span className="inline-block w-16 font-bold">寄件者：</span><span className="text-gray-900">{email.senderName}</span> <span className="text-gray-400">&lt;{email.senderEmail}&gt;</span></div>
-                  <div><span className="inline-block w-16 font-bold">時間：</span>{formatCurrentTime()}</div>
-                  <div><span className="inline-block w-16 font-bold">主旨：</span>{email.subject}</div>
-                  <div><span className="inline-block w-16 font-bold">寄給：</span>我 &lt;user@company.com&gt;</div>
+                  <div><span className="inline-block w-16 font-bold text-slate-800">寄件者：</span>{email.senderName} &lt;{email.senderEmail}&gt;</div>
+                  <div><span className="inline-block w-16 font-bold text-slate-800">時間：</span>{formatCurrentTime()}</div>
+                  <div><span className="inline-block w-16 font-bold text-slate-800">寄給：</span>我 &lt;user@company.com&gt;</div>
                 </div>
               )}
             </div>
@@ -146,15 +138,18 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
             </div>
           </div>
 
-          {/* Task 3: 事件委派處理動態 HTML 內容 */}
+          {/* Task 9: Markdown 渲染 + Task 3 事件代理 */}
           <div 
             ref={contentRef}
-            className="md:ml-14 text-[14px] md:text-[15px] text-gray-800 leading-relaxed email-content-body overflow-x-hidden"
-            dangerouslySetInnerHTML={{ __html: email.content }}
+            className="md:ml-14 prose prose-sm sm:prose-base max-w-none text-gray-800"
             onClick={handleBodyClick}
             onMouseOver={handleMouseOver}
             onMouseOut={handleMouseOut}
-          />
+          >
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {email.bodyMarkdown || email.content}
+            </ReactMarkdown>
+          </div>
 
           <div className="mt-12 md:ml-14 flex gap-3 border-t border-gray-100 pt-8 pb-12">
             <button className="flex items-center gap-2 border border-gray-300 rounded-full px-4 md:px-6 py-2 text-xs md:text-sm text-gray-600 hover:bg-gray-50 transition-all font-bold">
@@ -166,12 +161,6 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
           </div>
         </div>
       </div>
-
-      {hoveredUrl && (
-        <div className="fixed bottom-0 left-0 bg-[#f8f9fa] border-t border-r border-gray-300 px-2 py-1 text-[10px] md:text-[11px] text-gray-600 z-[9999] font-mono pointer-events-none max-w-[90vw] truncate shadow-sm animate-fade-in">
-          {hoveredUrl}
-        </div>
-      )}
     </div>
   );
 };

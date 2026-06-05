@@ -43,65 +43,64 @@ const MainApp = () => {
 
   const currentOtpCode = useMemo(() => Math.floor(100000 + Math.random() * 900000).toString(), [view]);
 
-  // Task 3: 背景自動生成信件
+  /**
+   * Task 7: 實作信件「無限滾動/自動補充」機制
+   */
+  const fetchNewEmails = async (count = 2) => {
+    if (isLoading) return;
+    setIsLoading(true);
+    console.log(`[Task 7] 背景補充 ${count} 封個人化演練信件...`);
+    
+    try {
+      const requests = Array.from({ length: count }).map(() => 
+        fetch('http://localhost:5000/api/phishing/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            scenario: '隨機演練情境', 
+            difficulty: '高',
+            occupation: user?.occupation,
+            interests: user?.interests,
+            userId: user?.userId
+          })
+        }).then(res => res.ok ? res.json() : null)
+      );
+
+      const results = await Promise.all(requests);
+      const newBatch = results.filter(Boolean).map(data => ({
+        id: data.id || 'ai-' + Math.random(),
+        senderName: data.senderName,
+        senderEmail: data.senderEmail,
+        subject: data.subject,
+        bodyMarkdown: data.bodyMarkdown,
+        content: data.bodyHtml,
+        isPhishing: data.isPhishing,
+        explanation: data.redFlags ? data.redFlags.join('、') : 'AI 生成的誘餌信件。',
+        suspiciousElements: data.redFlags || [],
+        timestamp: new Date()
+      }));
+
+      setEmails(prev => [...prev, ...newBatch]);
+    } catch (error) {
+      console.error('Auto replenishment failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 初始載入
   useEffect(() => {
-    const prefillEmails = async () => {
-      if (emails.length === 0 && !isLoading) {
-        setIsLoading(true);
-        console.log('[Task 3] 背景自動生成 3 封個人化演練信件...');
-        
-        try {
-          const generatedEmails = [];
-          
-          // 並行發送 3 個請求 (Task 3 要求生成 3 封)
-          const requests = [1, 2, 3].map(() => 
-            fetch('http://localhost:5000/api/phishing/generate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                scenario: '隨機安全事件', 
-                difficulty: '中',
-                occupation: user?.occupation,
-                interests: user?.interests
-              })
-            }).then(res => res.ok ? res.json() : null)
-          );
+    if (emails.length === 0 && user) {
+      fetchNewEmails(3);
+    }
+  }, [user]);
 
-          const results = await Promise.all(requests);
-          
-          results.forEach(data => {
-            if (data) {
-              generatedEmails.push({
-                id: data.id || 'ai-' + Math.random(),
-                senderName: data.senderName,
-                senderEmail: data.senderEmail,
-                subject: data.subject,
-                content: data.bodyHtml,
-                isPhishing: data.isPhishing,
-                explanation: data.redFlags ? data.redFlags.join('、') : 'AI 生成的誘餌信件。',
-                suspiciousElements: data.redFlags || [],
-                timestamp: new Date()
-              });
-            }
-          });
-
-          // 如果 AI 失敗，補上 Mock
-          const finalEmails = generatedEmails.length > 0 
-            ? generatedEmails 
-            : mockEmails.map(e => ({ ...e, timestamp: new Date() }));
-          
-          setEmails(finalEmails);
-        } catch (error) {
-          console.error('Auto generation failed:', error);
-          setEmails(mockEmails.map(e => ({ ...e, timestamp: new Date() })));
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    if (user) prefillEmails();
-  }, [user, emails.length]);
+  // Task 7: 監聽 length，自動補充
+  useEffect(() => {
+    if (emails.length <= 1 && !isLoading && user) {
+      fetchNewEmails(2);
+    }
+  }, [emails.length, isLoading, user]);
 
   // Track Mouse Movements
   useEffect(() => {
@@ -157,8 +156,8 @@ const MainApp = () => {
   };
 
   const handleAction = async (actionType) => {
-    const isCorrect = (actionType === 'phishing' && selectedEmail.isPhishing) || 
-                      (actionType === 'safe' && !selectedEmail.isPhishing);
+    const isCorrect = (actionType === 'phishing' && selectedEmail?.isPhishing) || 
+                      (actionType === 'safe' && !selectedEmail?.isPhishing);
     
     const duration = Math.floor((Date.now() - userStats.startTime) / 1000);
     recordUserBehavior({
@@ -175,11 +174,12 @@ const MainApp = () => {
       triggerMistakeSequence('wrong_answer');
     } else {
       setModalConfig({ isOpen: true, type: 'correct_answer' });
-      setView('list');
+      // 完成一封後從清單移除
+      setEmails(prev => prev.filter(e => e.id !== selectedEmail.id));
+      handleBackToList();
     }
   };
 
-  // Task 5: OTP 逃生門
   const handleReportPhishing = () => {
     recordUserBehavior({
       userId: user?.userId,
@@ -189,8 +189,8 @@ const MainApp = () => {
       hoverChecked: hoverCheckedRef.current
     });
     setModalConfig({ isOpen: true, type: 'correct_answer' });
-    setView('list');
-    setSelectedEmail(null);
+    setEmails(prev => prev.filter(e => e.id !== selectedEmail?.id));
+    handleBackToList();
   };
 
   const handleLinkClick = (url) => {
@@ -235,7 +235,8 @@ const MainApp = () => {
       triggerMistakeSequence('click');
     } else {
       setModalConfig({ isOpen: true, type: 'correct_answer' });
-      setView('list');
+      setEmails(prev => prev.filter(e => e.id !== selectedEmail?.id));
+      handleBackToList();
     }
   };
 
@@ -248,7 +249,8 @@ const MainApp = () => {
       reason
     });
     setModalConfig({ isOpen: true, type: status === 'success' ? 'recovery_success' : 'recovery_fail' });
-    setView('detail');
+    setEmails(prev => prev.filter(e => e.id !== selectedEmail?.id));
+    handleBackToList();
   };
 
   const renderMainContent = () => {
@@ -260,8 +262,15 @@ const MainApp = () => {
       case 'detail': return <EmailDetail email={selectedEmail} onBack={handleBackToList} onAction={handleAction} onLinkClick={handleLinkClick} onHoverTrack={handleHoverTrack} />;
       case 'list':
       default: return (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
           <EmailList emails={emails} onEmailClick={handleEmailClick} />
+          {/* Loading Animation for Infinite Stream */}
+          {isLoading && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-blue-100 flex items-center gap-2 text-xs font-bold text-blue-600 animate-fade-in z-20">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+              正在接收新郵件...
+            </div>
+          )}
         </div>
       );
     }
@@ -300,14 +309,12 @@ const MainApp = () => {
       </div>
 
       <VirtualPhone show={view === 'otp'} otpCode={currentOtpCode} />
-      
-      {/* Task 4: Hover Status Bar */}
       <HoverStatusBar url={hoveredHref} />
 
       {showScare && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center animate-hacker-glitch bg-black/80 backdrop-blur-md pointer-events-none">
           <div className="text-center p-4">
-            <h1 className="text-4xl md:text-8xl font-black text-red-600 tracking-tighter uppercase bg-black px-4 md:px-10 py-6 rounded-xl border-4 md:border-8 border-red-600 shadow-[0_0_100px_rgba(220,38,38,0.8)] mb-4">
+            <h1 className="text-4xl md:text-8xl font-black text-red-600 tracking-tighter uppercase bg-black px-4 md:px-10 py-6 rounded-xl border-4 md:border-8 border-red-600 shadow-[0_0_100px_rgba(220,38,38,0.8)] mb-4 font-mono">
               ALERT: FUND BREACH
             </h1>
             <p className="text-xl md:text-4xl text-white font-black animate-pulse">- NT$ 150,000.00</p>

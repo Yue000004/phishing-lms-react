@@ -63,3 +63,118 @@ docker compose up (未帶 -d 參數時)
    * 開啟 **雙分頁終端機**：
      * **分頁一**：`cd backend` ➔ `node server.js`（專心監聽 Port 5000）。
      * **分頁二**：`cd ..` 或在根目錄 ➔ `npm run dev` / `npm start`（專心跑前端畫面）。
+
+
+----------------------------------------
+# Gemini Model Lock Policy
+
+## Required Model
+
+**Always use:**
+
+```yaml
+model: gemini-2.5-flash
+```
+
+## Do Not Change Model
+
+Under no circumstances should the configured model be changed from:
+
+```yaml
+model: gemini-2.5-flash
+```
+
+to:
+
+```yaml
+model: gemini-1.5-flash
+```
+
+This includes:
+
+* Automatic model upgrades or downgrades
+* Compatibility adjustments
+* Cost optimization changes
+* Performance-based substitutions
+* Fallback mechanisms
+* Configuration refactoring
+* Template regeneration
+* AI-assisted code modifications
+
+## Forbidden Models
+
+Do not replace `gemini-2.5-flash` with:
+
+```text
+gemini-1.5-flash
+gemini-1.5-pro
+```
+
+unless the user explicitly requests it.
+
+## Configuration Protection
+
+When editing any file, preserve existing Gemini model settings.
+
+Examples:
+
+### Correct
+
+```yaml
+model: gemini-2.5-flash
+```
+
+### Incorrect
+
+```yaml
+model: gemini-1.5-flash
+```
+
+## Fallback Rules
+
+If `gemini-2.5-flash` is unavailable:
+
+1. Keep the configuration unchanged.
+2. Report the issue to the user.
+3. Request user instructions.
+4. Do not automatically switch to `gemini-1.5-flash`.
+
+## AI Editing Instructions
+
+When generating, updating, or refactoring code:
+
+* Preserve `gemini-2.5-flash`.
+* Never suggest replacing it with `gemini-1.5-flash`.
+* Never modify configuration files to use `gemini-1.5-flash`.
+* Never treat `gemini-1.5-flash` as a default fallback.
+* Respect the user's model preference at all times.
+
+## Enforcement Check
+
+Before saving any file, verify:
+
+```text
+gemini-2.5-flash
+```
+
+is still present and has not been changed to:
+
+```text
+gemini-1.5-flash
+```
+
+If such a change is detected, reject the modification and keep:
+
+```text
+gemini-2.5-flash
+```
+
+## User Preference
+
+The user's preferred and required model is:
+
+```text
+gemini-2.5-flash
+```
+
+This preference overrides any automatic model selection, migration, optimization, compatibility, or fallback logic.

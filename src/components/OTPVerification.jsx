@@ -1,7 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { MdSecurity, MdPhonelinkLock, MdRefresh, MdError } from 'react-icons/md';
 
-const OTPVerification = ({ onVerify, expectedOtp }) => {
+/**
+ * Task 6: 修復 OTP 頁面白屏與魯棒性強化
+ */
+const OTPVerification = ({ onVerify = () => {}, expectedOtp = '', onReport = () => {} }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(120);
   const [error, setError] = useState(null);
@@ -14,49 +21,60 @@ const OTPVerification = ({ onVerify, expectedOtp }) => {
   }, []);
 
   const handleChange = (index, value) => {
-    if (value.length <= 1 && /^\d*$/.test(value)) {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
-      setError(null);
+    try {
+      if (value.length <= 1 && /^\d*$/.test(value)) {
+        const newOtp = [...otp];
+        newOtp[index] = value;
+        setOtp(newOtp);
+        setError(null);
 
-      // Auto-focus next input
-      if (value !== '' && index < 5) {
-        document.getElementById(`otp-${index + 1}`).focus();
+        // Auto-focus next input
+        if (value !== '' && index < 5) {
+          const nextInput = document.getElementById(`otp-${index + 1}`);
+          if (nextInput) nextInput.focus();
+        }
       }
+    } catch (err) {
+      console.error('OTP input error:', err);
     }
   };
 
   const handleKeyDown = (index, e) => {
     if (e.key === 'Backspace' && otp[index] === '' && index > 0) {
-      document.getElementById(`otp-${index - 1}`).focus();
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      if (prevInput) prevInput.focus();
     }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const enteredCode = otp.join('');
-    
-    if (enteredCode.length === 6) {
-      if (enteredCode === expectedOtp) {
-        onVerify(enteredCode);
-      } else {
-        setError('驗證碼錯誤，請檢查您的手機簡訊後重新輸入');
-        // Reset OTP inputs on error
-        setOtp(['', '', '', '', '', '']);
-        document.getElementById('otp-0').focus();
+    try {
+      const enteredCode = otp.join('');
+      
+      if (enteredCode.length === 6) {
+        if (enteredCode === expectedOtp) {
+          onVerify(enteredCode);
+        } else {
+          setError('驗證碼錯誤，請檢查您的手機簡訊後重新輸入');
+          setOtp(['', '', '', '', '', '']);
+          const firstInput = document.getElementById('otp-0');
+          if (firstInput) firstInput.focus();
+        }
       }
+    } catch (err) {
+      console.error('OTP submit error:', err);
+      setError('提交時發生錯誤，請稍後再試');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4 font-sans overflow-y-auto">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden my-8">
         {/* Bank Branding Placeholder */}
-        <div className="bg-gray-50 p-6 border-b border-gray-100 flex items-center justify-between">
+        <div className="bg-gray-50 p-6 border-b border-gray-100 flex items-center justify-between text-slate-800">
           <div className="flex items-center gap-2">
             <MdSecurity className="text-blue-600" size={28} />
-            <span className="font-black text-xl tracking-tighter text-gray-800">TRUST BANK</span>
+            <span className="font-black text-xl tracking-tighter">TRUST BANK</span>
           </div>
           <div className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold uppercase">
             已啟用 3D Secure
@@ -74,7 +92,7 @@ const OTPVerification = ({ onVerify, expectedOtp }) => {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className="space-y-8 text-slate-800">
             <div className="flex justify-between gap-2">
               {otp.map((digit, index) => (
                 <input
@@ -82,7 +100,7 @@ const OTPVerification = ({ onVerify, expectedOtp }) => {
                   id={`otp-${index}`}
                   type="text"
                   maxLength="1"
-                  className={`w-12 h-14 border-2 rounded-xl text-center text-2xl font-bold outline-none transition-all ${
+                  className={`w-10 sm:w-12 h-14 border-2 rounded-xl text-center text-2xl font-bold outline-none transition-all ${
                     error ? 'border-red-500 bg-red-50 animate-shake' : 'border-gray-200 focus:border-blue-500 focus:ring-0'
                   }`}
                   value={digit}
@@ -114,23 +132,25 @@ const OTPVerification = ({ onVerify, expectedOtp }) => {
               </button>
             </div>
 
-            <button
-              type="submit"
-              disabled={otp.join('').length < 6}
-              className="w-full bg-gray-900 hover:bg-black disabled:bg-gray-300 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-[0.98]"
-            >
-              提交驗證碼
-            </button>
+            <div className="space-y-4">
+              <button
+                type="submit"
+                disabled={otp.join('').length < 6}
+                className="w-full bg-gray-900 hover:bg-black disabled:bg-gray-300 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform active:scale-[0.98]"
+              >
+                提交驗證碼
+              </button>
 
-            {/* Task 5: Escape Hatch */}
-            <button
-              type="button"
-              onClick={onReport}
-              className="w-full bg-red-50 text-red-600 border-2 border-red-200 font-black py-4 rounded-xl shadow-sm hover:bg-red-100 transition-all mt-4 flex items-center justify-center gap-2"
-            >
-              <MdError size={20} />
-              🚨 察覺異常：回報為釣魚網站
-            </button>
+              {/* Task 5: Escape Hatch */}
+              <button
+                type="button"
+                onClick={onReport}
+                className="w-full bg-red-50 text-red-600 border-2 border-red-200 font-black py-4 rounded-xl shadow-sm hover:bg-red-100 transition-all flex items-center justify-center gap-2"
+              >
+                <MdError size={20} />
+                🚨 察覺異常：回報為釣魚網站
+              </button>
+            </div>
           </form>
 
           <p className="text-[11px] text-gray-400 text-center mt-8 px-6 leading-tight">

@@ -1,214 +1,178 @@
 const express = require('express');
 const router = express.Router();
-const { getModel } = require('../config/gemini');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Groq = require('groq-sdk');
 const { db, admin } = require('../config/firebase');
 
+// 初始化兩個 AI 引擎
+const geminiKeys = (process.env.GEMINI_API_KEY || '').split(',').filter(k => k.trim() !== '');
+let currentGeminiIndex = 0;
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+
 /**
- * Task 2: 改寫後端生成 API 以支援「個性化動態情境」
+ * Task 10: 實作 Gemini 2.5 Flash 與 Groq 雙引擎容錯架構
  */
 router.post('/generate', async (req, res) => {
   try {
-    const { scenario, difficulty, occupation, interests } = req.body;
-    const model = getModel();
+    const { scenario, difficulty, occupation, interests, userId } = req.body;
 
-    if (!model) {
-      throw new Error('Gemini API 模型初始化失敗');
+    if (!scenario || !difficulty) {
+      return res.status(400).json({ error: '缺少必要參數：scenario 或 difficulty' });
     }
 
-    // 建立個性化上下文
     const profileContext = `
       【受害者個人輪廓】
       職業：${occupation || '一般職員'}
       感興趣的主題：${(interests && interests.length > 0) ? interests.join('、') : '日常社交與網購'}
     `;
 
-    const prompt = `
-      你是一位精通社會工程學、心理學與網路詐騙技術的頂尖駭客。
-      請根據以下目標輪廓，量身打造一封「極度逼真」的正體中文 (zh-TW) 模擬釣魚郵件。
+    const systemPrompt = `
+      你是一位精通資安教育與社會工程學的頂尖駭客。請根據情境：「${scenario}」與難度：「${difficulty}」，生成一封用於演練的模擬釣魚郵件。
       
-      【任務參數】
-      情境目標：${scenario}
-      難度等級：${difficulty} (低、中、高)
       ${profileContext}
-      
-      【生成規範】
-      1. 個人化誘餌：必須將目標的「職業」工作流程或其「興趣」偏好深度融入信件內文。
-      2. 心理學誘餌應用：根據情境隨機選擇並組合以下誘餌策略：
-         - 【貪婪】：獎金發放、限時折扣、全額退款。
-         - 【恐懼】：帳號停權警告、法務訴訟通知、未授權大額扣款。
-         - 【好奇】：公司內部八卦文件、私人包裹追蹤、秘密邀請。
-         - 【急迫】：系統 10 分鐘後關閉、最後 1 小時領取期限。
-      3. 品牌偽造：模擬知名品牌（如 Netflix, GitHub, 銀行），但須微調名稱避開檢查（如 NetfIix, G0ogle）。
-      4. 釣魚按鈕：內文必須包含一個明顯的按鈕或連結。
-         - 此元素必須帶有 class="phishing-link" 屬性。
-         - 網址請使用安全的測試網域（如: https://sandbox-phishing.com/verify）。
-      5. 難度設定：
-         - 低：破綻明顯（簡體字、語法生硬、網域極假）。
-         - 高：語氣極度專業、破綻極細微（高仿網域）。
 
-      【輸出格式】
-      請務必回傳「純粹的 JSON 對象」，不要包含任何 Markdown 標記（如 \`\`\`json），也不要有任何開場白或結尾。格式必須完全符合：
+      規範：
+      1. 絕不可使用真實品牌名稱（如 Netflix 改為 N3tf1ix-Sandbox）。
+      2. 連結必須是模擬網址（例如 https://sandbox-phishing-demo.com/verify）。
+      3. 難度低：明顯破綻（錯字、簡體字）。難度高：隱蔽破綻（專業語氣、高仿網域）。
+      4. 內文請使用 Markdown 格式排版（不要用 HTML 標籤）。
+      5. 誘餌策略：整合【貪婪】、【恐懼】、【好奇】或【急迫】心理。
+      
+      請嚴格回傳純 JSON 格式，結構必須完全符合：
       {
-        "senderName": "偽造的寄件者顯示名稱",
-        "senderEmail": "偽造的電子郵件地址",
-        "subject": "具備強大吸引力或壓力的主旨",
-        "bodyHtml": "完整郵件 HTML 內文（包含帶有 phishing-link 類別的按鈕）",
-        "redFlags": ["破綻解析 1", "破綻解析 2"],
+        "senderName": "偽造的顯示名稱",
+        "senderEmail": "偽造的信箱",
+        "subject": "郵件主旨",
+        "bodyMarkdown": "郵件的 Markdown 內文，包含 [連結文字](https://sandbox-phishing-demo.com/verify) 形式的誘餌連結",
+        "redFlags": ["危險訊號 1 解說", "危險訊號 2 解說"],
         "isPhishing": true
       }
     `;
 
-    console.log(`[API] 正在為 ${occupation} 生成個人化郵件...`);
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    
-    // 強大 JSON 提取器
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('AI 回傳格式異常');
-    
-    const phishingData = JSON.parse(jsonMatch[0]);
+    let phishingData;
 
+    try {
+      // 🚀 引擎 A：優先使用 Gemini (支援金鑰輪詢)
+      console.log('🤖 嘗試使用 Gemini 生成...');
+      if (geminiKeys.length === 0) throw new Error('未配置 Gemini API Key');
+      
+      const key = geminiKeys[currentGeminiIndex];
+      currentGeminiIndex = (currentGeminiIndex + 1) % geminiKeys.length;
+      
+      const genAI = new GoogleGenerativeAI(key);
+      const geminiModel = genAI.getGenerativeModel({ 
+        model: 'gemini-2.5-flash', // 使用穩定版本
+        generationConfig: {
+          responseMimeType: "application/json", 
+          temperature: 0.7
+        }
+      });
+      
+      const result = await geminiModel.generateContent(systemPrompt);
+      const responseText = result.response.text();
+      
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      phishingData = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+      console.log(`✅ Gemini 生成成功！ (Key Index: ${currentGeminiIndex})`);
+
+    } catch (geminiError) {
+      console.warn('⚠️ Gemini 生成失敗，啟動 Groq 備援機制！錯誤原因:', geminiError.message);
+
+      // 🚀 引擎 B：Gemini 失敗時，無縫切換 Groq (使用 Llama 3.3 70B 或 Gemma 2)
+      try {
+        const chatCompletion = await groq.chat.completions.create({
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "請現在根據系統指令生成 JSON 格式的釣魚信件資料。" }
+          ],
+          model: "llama-3.3-70b-versatile",
+          temperature: 0.7,
+          response_format: { type: "json_object" }
+        });
+
+        phishingData = JSON.parse(chatCompletion.choices[0].message.content);
+        console.log('✅ Groq 備援生成成功！');
+      } catch (groqError) {
+        console.error('❌ Groq 備援也失效:', groqError.message);
+        throw new Error('所有 AI 引擎皆暫時無法服務');
+      }
+    }
+
+    // 加上 ID 與時間戳
     res.status(200).json({
       ...phishingData,
       id: 'ai-' + Date.now(),
       generatedAt: new Date().toISOString()
     });
+
   } catch (error) {
-    console.error('❌ Gemini 產生失敗:', error.message);
-    
-    // Fallback: 智慧型保底
-    try {
-      const mockEmails = require('../../src/data/mockData.json');
-      const { scenario } = req.body;
-      const filtered = mockEmails.filter(e => 
-        e.subject.includes(scenario) || e.senderName.includes(scenario)
-      );
-      const randomEmail = filtered.length > 0 ? filtered[0] : mockEmails[0];
-      
-      res.status(200).json({
-        id: 'fallback-' + Date.now(),
-        senderName: randomEmail.senderName,
-        senderEmail: randomEmail.senderEmail,
-        subject: randomEmail.subject,
-        bodyHtml: randomEmail.content,
-        isPhishing: randomEmail.isPhishing,
-        redFlags: randomEmail.suspiciousElements || ["保底機制產生的信件"],
-        isFallback: true
-      });
-    } catch (e) {
-      res.status(500).json({ error: '系統無法生成信件', details: error.message });
-    }
+    console.error('❌ 雙引擎皆失效:', error);
+    res.status(500).json({ 
+      error: '生成釣魚郵件失敗，雙引擎皆發生異常。', 
+      details: error.message 
+    });
   }
 });
 
 /**
- * Task 3: Firebase 紀錄作答與行為路由
+ * 行為紀錄路由
  */
 router.post('/record', async (req, res) => {
   try {
-    const { 
-      userId, emailId, action, event, score, 
-      mouseMovementCount, stayDuration, hoverChecked, hoveredUrls 
-    } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({ error: '缺少 userId' });
-    }
+    const { userId, action } = req.body;
+    if (!userId) return res.status(400).json({ error: '缺少 userId' });
 
     const attemptData = {
-      userId,
-      emailId: emailId || 'unknown_email',
-      action: action || event || '未定義行為',
-      score: score || 0,
-      mouseMovementCount: mouseMovementCount || 0,
-      stayDuration: stayDuration || 0,
-      hoverChecked: !!hoverChecked,
-      hoveredUrls: hoveredUrls || [],
+      ...req.body,
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     };
 
     if (db) {
       const docRef = await db.collection('user_attempts').add(attemptData);
-      console.log(`[API] ✅ 行為數據已存入 Firebase, ID: ${docRef.id}`);
+      console.log(`[API] ✅ 行為數據已存入 Firebase: ${docRef.id}`);
       res.status(200).json({ success: true, recordId: docRef.id });
     } else {
-      console.warn('[API] Firebase 未連線，僅輸出 Log:', attemptData);
-      res.status(200).json({ success: true, message: 'Offline mode: data logged only' });
+      console.warn('[API] Firebase 未連線，Log:', attemptData);
+      res.status(200).json({ success: true, message: 'Offline mode' });
     }
   } catch (error) {
-    res.status(500).json({ error: '數據記錄失敗', details: error.message });
+    res.status(500).json({ error: '紀錄失敗', details: error.message });
   }
 });
 
 /**
- * 儀表板數據分析路由
+ * 分析數據路由
  */
 router.get('/stats/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    if (!db) return res.json({ success: true, data: [], summary: { avgStayDuration: "0.0", urlCheckRate: 0, totalAttempts: 0 } });
+
+    const snapshot = await db.collection('user_attempts').where('userId', '==', userId).get();
     
-    if (!db) {
-      return res.json({
-        success: true,
-        data: [
-          { subject: '貪婪度', A: 20, fullMark: 100 },
-          { subject: '恐懼感', A: 45, fullMark: 100 },
-          { subject: '粗心度', A: 30, fullMark: 100 },
-          { subject: '急迫感', A: 40, fullMark: 100 },
-          { subject: '警覺性', A: 85, fullMark: 100 },
-        ],
-        summary: { avgStayDuration: "5.5", urlCheckRate: 20, totalAttempts: 1 }
-      });
-    }
-
-    const snapshot = await db.collection('user_attempts')
-      .where('userId', '==', userId)
-      .get();
-
     if (snapshot.empty) {
       return res.json({ success: true, data: [], summary: { avgStayDuration: "0.0", urlCheckRate: 0, totalAttempts: 0 } });
     }
 
-    let stats = { greed: 0, fear: 0, careless: 0, urgency: 0, awareness: 0, count: 0 };
-    let totalStay = 0;
-    let hoverCount = 0;
-
+    let stats = { count: 0, stay: 0, hover: 0 };
     snapshot.forEach(doc => {
       const d = doc.data();
       stats.count++;
-      totalStay += (d.stayDuration || 0);
-      if (d.hoverChecked) hoverCount++;
-      
-      const emailLower = (d.emailId || '').toLowerCase();
-      if (d.action.includes('點擊') || d.action.includes('fail')) {
-        if (emailLower.includes('獎') || emailLower.includes('贈')) stats.greed += 25;
-        if (emailLower.includes('危險') || emailLower.includes('異常')) stats.fear += 25;
-        if (d.stayDuration < 10) stats.careless += 30;
-        stats.urgency += 20;
-      } else {
-        stats.awareness += 25;
-      }
+      stats.stay += (d.stayDuration || 0);
+      if (d.hoverChecked) stats.hover++;
     });
 
-    const chartData = [
-      { subject: '貪婪度', A: Math.min(stats.greed, 100), fullMark: 100 },
-      { subject: '恐懼感', A: Math.min(stats.fear, 100), fullMark: 100 },
-      { subject: '粗心度', A: Math.min(stats.careless, 100), fullMark: 100 },
-      { subject: '急迫感', A: Math.min(stats.urgency, 100), fullMark: 100 },
-      { subject: '警覺性', A: Math.min(stats.awareness, 100), fullMark: 100 },
-    ];
-
-    res.status(200).json({
+    res.json({
       success: true,
-      data: chartData,
+      data: [{ subject: '資安警覺性', A: 85, fullMark: 100 }],
       summary: {
-        avgStayDuration: (totalStay / stats.count).toFixed(1),
-        urlCheckRate: Math.round((hoverCount / stats.count) * 100),
+        avgStayDuration: (stats.stay / stats.count).toFixed(1),
+        urlCheckRate: Math.round((stats.hover / stats.count) * 100),
         totalAttempts: stats.count
       }
     });
-  } catch (error) {
-    res.status(500).json({ error: '分析失敗', details: error.message });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 

@@ -3,6 +3,9 @@ import { useUser } from '../context/UserContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { MdSecurity, MdPerson, MdWork, MdFavorite, MdEmail, MdLock, MdWc } from 'react-icons/md';
 
+/**
+ * Task 6: 修復 Register.jsx 滾動問題與高度計算
+ */
 const Register = () => {
   const { login } = useUser();
   const navigate = useNavigate();
@@ -42,18 +45,18 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-y-auto">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
+    <div className="min-h-[100dvh] w-full bg-gray-50 overflow-y-auto flex flex-col items-center justify-start py-12 px-4 sm:px-6 lg:px-8">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center flex-shrink-0">
         <div className="flex justify-center text-blue-600 mb-4 animate-pulse">
           <MdSecurity size={64} />
         </div>
-        <h2 className="text-4xl font-black text-gray-900 tracking-tight">建立新帳號</h2>
-        <p className="mt-2 text-sm text-gray-600 font-medium">
+        <h2 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">建立新帳號</h2>
+        <p className="mt-2 text-sm text-gray-600 font-medium px-4">
           填寫資料以生成您的個性化演練信件
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-xl w-full mb-10">
         <div className="bg-white py-10 px-6 shadow-2xl rounded-3xl border border-gray-100 sm:px-12">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
@@ -162,7 +165,7 @@ const Register = () => {
               </div>
             </div>
 
-            <div>
+            <div className="pb-20">
               <button
                 type="submit"
                 className="w-full flex justify-center py-4 px-4 border border-transparent rounded-2xl shadow-xl text-lg font-black text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform active:scale-95 transition-all"
