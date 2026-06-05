@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply text-slate-700 bg-white overflow-hidden h-screen;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+}
+
+/* 強制定義按鈕樣式，不依賴 Tailwind 掃描 */
+.phishing-link {
+  display: inline-block !important;
+  background-color: #2563eb !important; /* bg-blue-600 */
+  color: #ffffff !important;
+  padding: 10px 24px !important;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  margin-top: 16px !important;
+  margin-bottom: 16px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease-in-out !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+.phishing-link:hover {
+  background-color: #1d4ed8 !important; /* bg-blue-700 */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+.material-icons {
+  font-size: 20px;
+}
+
+/* 駭客警告動畫特效 */
+@keyframes glitch {
+  0% { transform: translate(0) }
+  20% { transform: translate(-2px, 2px) }
+  40% { transform: translate(-2px, -2px) }
+  60% { transform: translate(2px, 2px) }
+  80% { transform: translate(2px, -2px) }
+  100% { transform: translate(0) }
+}
+
+@keyframes flash-red {
+  0%, 100% { background-color: rgba(0, 0, 0, 0.9); }
+  50% { background-color: rgba(150, 0, 0, 0.8); }
+}
+
+.animate-hacker-glitch {
+  animation: glitch 0.2s linear infinite, flash-red 0.5s ease-in-out infinite;
+}
+
+/* 其他小動畫 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.2s ease-in-out 0s 2;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}

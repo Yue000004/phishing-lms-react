@@ -1,0 +1,35 @@
+[
+  {
+    "id": "1",
+    "senderName": "台灣高鐵",
+    "senderEmail": "noreply@thsrc-promo.net",
+    "realSender": "system@thsrc.com.tw",
+    "subject": "【緊急通知】高鐵大學生優惠票扣款失敗，請儘速更新付款資訊",
+    "content": "<p>親愛的用戶您好，</p><p>我們偵測到您的訂單 <b>#TH882910</b> 大學生優惠票扣款失敗。為避免您的座位被取消，請點擊下方按鈕完成更新資訊：</p><a href='http://thsrc-verify.net/billing' class='phishing-link'>立即前往更新付款資訊並保留座位</a><p>若逾期未處理，系統將自動取消預約。</p>",
+    "isPhishing": true,
+    "explanation": "此信件為典型的『緊迫感』釣魚。破綻：1. 寄件者網域 thsrc-promo.net 非官方 domain。2. 超連結網址 thsrc-verify.net 為詐騙釣魚網站。",
+    "suspiciousElements": ["假網域", "急迫語氣", "不當連結"]
+  },
+  {
+    "id": "2",
+    "senderName": "Steam Support",
+    "senderEmail": "account-verify@steampower.com",
+    "realSender": "noreply@steampowered.com",
+    "subject": "Your Steam Account: Recent login from a new device",
+    "content": "<p>Hello,</p><p>Your Steam account was recently accessed from a new IP address: <b>103.24.12.19 (Moscow, RU)</b>.</p><p>If this was not you, please secure your account immediately by clicking the button below:</p><a href='https://steamcommunitly.com/login' class='phishing-link'>Verify and Secure My Account Now</a>",
+    "isPhishing": true,
+    "explanation": "經典的『帳號異常』釣魚。破綻：1. 寄件者網域 steampower.com 漏掉了一個 'ed'。2. 連結網址 steamcommunitly.com 多了一個 'l'。",
+    "suspiciousElements": ["拼寫錯誤的連結", "假冒寄件者"]
+  },
+  {
+    "id": "3",
+    "senderName": "Apple Pay",
+    "senderEmail": "support@apple.com",
+    "realSender": "support@apple.com",
+    "subject": "您已成功支付 NT$ 2,990 元給 LINE PAY",
+    "content": "<p>感謝您使用 Apple Pay。您的交易已完成。</p><a href='https://apple.com/support' class='phishing-link'>如果您沒有授權此交易，請點此聯繫 Apple 支援中心進行申訴</a>",
+    "isPhishing": false,
+    "explanation": "這是一封正常的通知信。連結指向官方 apple.com/support，且語氣正常。",
+    "suspiciousElements": []
+  }
+]
