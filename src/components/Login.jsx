@@ -31,12 +31,15 @@ const Login = () => {
     }
     
     // Default login for demo if no saved user or mismatch
-    login({
+    const newUser = {
+      userId: 'user-' + Math.random().toString(36).substr(2, 9),
       name: '測試使用者',
       email: formData.email,
       occupation: '工程師',
       interests: ['遊戲', '購物']
-    });
+    };
+    login(newUser);
+    localStorage.setItem('phishing_lms_user', JSON.stringify(newUser));
     navigate('/');
   };
 

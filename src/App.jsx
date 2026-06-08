@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import mockEmails from './data/mockData.json';
 import EmailList from './components/EmailList';
 import EmailDetail from './components/EmailDetail';
@@ -18,21 +18,44 @@ import Register from './components/Register';
 import HoverStatusBar from './components/HoverStatusBar';
 import { UserProvider, useUser } from './context/UserContext';
 import { recordUserBehavior } from './services/api';
+import { MdReportGmailerrorred } from 'react-icons/md';
 
 const MainApp = () => {
   const { user, logout } = useUser();
   const navigate = useNavigate();
+  const location = useLocation();
   
-  // View states: 'list' | 'detail' | 'payment' | 'otp' | 'recovery' | 'analytics'
-  const [view, setView] = useState('list'); 
+  // View states derived from URL
+  const view = useMemo(() => {
+    const path = location.pathname;
+    if (path === '/payment') return 'payment';
+    if (path === '/otp') return 'otp';
+    if (path === '/recovery') return 'recovery';
+    if (path === '/analytics') return 'analytics';
+    if (path.startsWith('/email/')) return 'detail';
+    return 'list';
+  }, [location.pathname]);
+
   const [activeTab, setActiveTab] = useState('inbox');
   const [emails, setEmails] = useState([]);
-  const [selectedEmail, setSelectedEmail] = useState(null);
+  const [selectedEmail, setSelectedEmail] = useState(() => {
+    // P0: Fallback to localStorage if state is missing
+    try {
+      const stored = localStorage.getItem('current_phishing_scenario');
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [modalConfig, setModalConfig] = useState({ isOpen: false, type: '' });
   const [showScare, setShowScare] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [hoveredHref, setHoveredUrl] = useState(null);
+  const hasStartedFetching = useRef(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Tracking Metrics
   const hoverCheckedRef = useRef(false);
@@ -41,66 +64,165 @@ const MainApp = () => {
     startTime: null
   });
 
-  const currentOtpCode = useMemo(() => Math.floor(100000 + Math.random() * 900000).toString(), [view]);
+  const currentOtpCode = useMemo(() => Math.floor(100000 + Math.random() * 900000).toString(), [location.pathname]);
+
+  // Sync selectedEmail with URL if in detail view
+  useEffect(() => {
+    if (view === 'detail') {
+      const emailId = location.pathname.split('/email/')[1];
+      if (emailId) {
+        const email = emails.find(e => e.id === emailId);
+        if (email) {
+          setSelectedEmail(email);
+          localStorage.setItem('current_phishing_scenario', JSON.stringify(email));
+        } else if (emails.length > 0 && isInitialized) {
+          // If not found in memory but we have emails, check localStorage or fallback
+          const stored = localStorage.getItem('current_phishing_scenario');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.id === emailId) {
+              setSelectedEmail(parsed);
+              return;
+            }
+          }
+          navigate('/', { replace: true });
+        }
+      }
+    } else if (view === 'list') {
+      // Don't clear selectedEmail here, might be needed for sub-pages like /payment
+    }
+  }, [view, location.pathname, emails, isInitialized]);
 
   /**
    * Task 7: 實作信件「無限滾動/自動補充」機制
    */
+
+
   const fetchNewEmails = async (count = 2) => {
-    if (isLoading) return;
-    setIsLoading(true);
-    console.log(`[Task 7] 背景補充 ${count} 封個人化演練信件...`);
+    if (isGenerating || hasStartedFetching.current) return;
+    setIsGenerating(true);
+    hasStartedFetching.current = true;
+    setApiError(null);
+    console.log(`[P1] 背景補充 ${count} 封混合演練信件 (20% 釣魚, 80% 安全)...`);
     
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for AI
+
     try {
-      const requests = Array.from({ length: count }).map(() => 
-        fetch('http://localhost:5000/api/phishing/generate', {
+      const requests = Array.from({ length: count }).map(() => {
+        const type = Math.random() < 0.2 ? 'phishing' : 'safe';
+        return fetch('http://localhost:5000/api/phishing/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
           body: JSON.stringify({ 
-            scenario: '隨機演練情境', 
+            scenario: type === 'phishing' ? '隨機金融詐騙' : '日常行政通知', 
             difficulty: '高',
             occupation: user?.occupation,
             interests: user?.interests,
-            userId: user?.userId
+            userId: user?.userId,
+            type: type
           })
-        }).then(res => res.ok ? res.json() : null)
-      );
+        }).then(res => res.ok ? res.json() : null);
+      });
 
       const results = await Promise.all(requests);
-      const newBatch = results.filter(Boolean).map(data => ({
-        id: data.id || 'ai-' + Math.random(),
-        senderName: data.senderName,
-        senderEmail: data.senderEmail,
-        subject: data.subject,
-        bodyMarkdown: data.bodyMarkdown,
-        content: data.bodyHtml,
-        isPhishing: data.isPhishing,
-        explanation: data.redFlags ? data.redFlags.join('、') : 'AI 生成的誘餌信件。',
-        suspiciousElements: data.redFlags || [],
-        timestamp: new Date()
-      }));
+      clearTimeout(timeoutId);
+      const filteredResults = results.filter(Boolean);
 
-      setEmails(prev => [...prev, ...newBatch]);
+      let finalBatch = [];
+
+      if (filteredResults.length > 0) {
+        finalBatch = filteredResults.map(data => ({
+          id: data.id || 'ai-' + Math.random(),
+          senderName: data.senderName || 'Unknown',
+          senderEmail: data.senderEmail || '',
+          subject: data.subject || '(無主旨)',
+          bodyMarkdown: data.bodyMarkdown || '',
+          content: data.bodyHtml || data.bodyMarkdown || '',
+          isPhishing: !!data.isPhishing,
+          explanation: data.isPhishing ? (data.redFlags ? data.redFlags.join('、') : 'AI 生成的誘餌信件。') : '這是一封正常的電子郵件。',
+          suspiciousElements: data.redFlags || [],
+          timestamp: new Date()
+        }));
+      } else {
+        // P1 Fallback: Use mockData if API returned nothing
+        console.warn('⚠️ AI 生成全數失敗或逾時，切換至本地 Mock 備援資料');
+        const randomMocks = [...mockEmails].sort(() => 0.5 - Math.random()).slice(0, count);
+        finalBatch = randomMocks.map(m => ({ ...m, id: 'mock-' + Math.random() }));
+      }
+
+      if (finalBatch.length > 0) {
+        setEmails(prev => [...prev, ...finalBatch]);
+      }
     } catch (error) {
       console.error('Auto replenishment failed:', error);
+      // P1 Fallback: Use mockData on error
+      const fallbackMocks = [...mockEmails].sort(() => 0.5 - Math.random()).slice(0, count);
+      setEmails(prev => [...prev, ...fallbackMocks.map(m => ({ ...m, id: 'fallback-' + Math.random() }))]);
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
+      hasStartedFetching.current = false;
+      clearTimeout(timeoutId);
     }
   };
 
-  // 初始載入
+  // 初始載入歷史信件與補齊機制
   useEffect(() => {
-    if (emails.length === 0 && user) {
-      fetchNewEmails(3);
-    }
-  }, [user]);
+    const loadInitialEmails = async () => {
+      if (!user || isInitialized) return;
+      
+      setIsLoading(true);
+      setApiError(null);
 
-  // Task 7: 監聽 length，自動補充
+      try {
+        console.log('[App] 讀取歷史信件...');
+        const res = await axios.get(`http://localhost:5000/api/phishing/emails/${user.userId}`, {
+            timeout: 10000
+        });
+        
+        let historyEmails = [];
+        // 修正：使用 res.data.data 並確保 emails 是 array
+        if (res.data && res.data.success && Array.isArray(res.data.data)) {
+          historyEmails = res.data.data.map(e => ({
+            id: e.id,
+            senderName: e.senderName || 'Unknown',
+            senderEmail: e.senderEmail || '',
+            subject: e.subject || '(無主旨)',
+            bodyMarkdown: e.bodyMarkdown || '',
+            content: e.bodyHtml || e.bodyMarkdown || '', 
+            isPhishing: e.isPhishing !== undefined ? e.isPhishing : true,
+            explanation: e.redFlags ? e.redFlags.join('、') : 'AI 生成的客製化誘餌信件。',
+            suspiciousElements: e.redFlags || [],
+            timestamp: e.generatedAt ? new Date(e.generatedAt) : new Date()
+          }));
+        }
+
+        setEmails(Array.isArray(historyEmails) ? historyEmails : []);
+        setIsInitialized(true);
+
+        if (historyEmails.length < 3) {
+          await fetchNewEmails(3 - historyEmails.length);
+        }
+      } catch (error) {
+        console.error('Failed to load history:', error);
+        setApiError(error.code === 'ECONNABORTED' ? '連線逾時，正在嘗試重新建立連線...' : '無法連線至後端伺服器，請確認後端服務已啟動。');
+        setIsInitialized(true);
+        setEmails([]); // 確保初始化為空陣列以防崩潰
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialEmails();
+  }, [user, isInitialized]);
+
+  // Task 7: 監聽 length，自動補充 (確保已初始化)
   useEffect(() => {
-    if (emails.length <= 1 && !isLoading && user) {
+    if (isInitialized && emails.length <= 1 && user && !hasStartedFetching.current && !isGenerating && !isLoading) {
       fetchNewEmails(2);
     }
-  }, [emails.length, isLoading, user]);
+  }, [emails.length, user, isGenerating, isLoading, isInitialized]);
 
   // Track Mouse Movements
   useEffect(() => {
@@ -123,36 +245,54 @@ const MainApp = () => {
     setShowScare(true);
     
     const duration = Math.floor((Date.now() - userStats.startTime) / 1000);
-    recordUserBehavior({
-      userId: user?.userId,
-      emailId: selectedEmail?.subject || selectedEmail?.id,
-      action: 'failed_phishing_test',
-      mouseMovementCount: userStats.mouseMovementCount,
-      stayDuration: duration,
-      hoverChecked: hoverCheckedRef.current,
-      score: 0
-    });
+    try {
+      recordUserBehavior({
+        userId: user?.userId,
+        emailId: selectedEmail?.subject || selectedEmail?.id,
+        action: 'failed_phishing_test',
+        mouseMovementCount: userStats.mouseMovementCount,
+        stayDuration: duration,
+        hoverChecked: hoverCheckedRef.current,
+        score: 0
+      });
+    } catch (e) {
+      console.warn('Failed to record behavior:', e);
+    }
 
     setTimeout(() => {
       setShowScare(false);
       if (type === 'click') {
-        setView('recovery');
+        navigate('/recovery');
       } else {
         setModalConfig({ isOpen: true, type });
-        setView('detail');
+        navigate('/');
       }
     }, 2500);
   };
 
   const handleEmailClick = (email) => {
     setSelectedEmail(email);
-    setView('detail');
+    localStorage.setItem('current_phishing_scenario', JSON.stringify(email));
+    
+    // Track open event
+    try {
+      recordUserBehavior({
+        userId: user?.userId,
+        emailId: email.id,
+        action: 'open_email',
+        timestamp: new Date().toISOString()
+      });
+    } catch (e) {
+      console.warn('Failed to record open event:', e);
+    }
+
+    navigate(`/email/${email.id}`);
     setIsSidebarOpen(false);
   };
 
   const handleBackToList = () => {
-    setView('list');
-    setSelectedEmail(null);
+    navigate('/');
+    // setSelectedEmail(null); // Keep it for a bit to avoid flashes
   };
 
   const handleAction = async (actionType) => {
@@ -160,53 +300,69 @@ const MainApp = () => {
                       (actionType === 'safe' && !selectedEmail?.isPhishing);
     
     const duration = Math.floor((Date.now() - userStats.startTime) / 1000);
-    recordUserBehavior({
-      userId: user?.userId,
-      emailId: selectedEmail?.subject || selectedEmail?.id,
-      action: actionType,
-      mouseMovementCount: userStats.mouseMovementCount,
-      stayDuration: duration,
-      hoverChecked: hoverCheckedRef.current,
-      score: isCorrect ? 100 : 0
-    });
+    try {
+      recordUserBehavior({
+        userId: user?.userId,
+        emailId: selectedEmail?.subject || selectedEmail?.id,
+        action: actionType,
+        mouseMovementCount: userStats.mouseMovementCount,
+        stayDuration: duration,
+        hoverChecked: hoverCheckedRef.current,
+        score: isCorrect ? 100 : 0
+      });
+    } catch (e) {
+      console.warn('Failed to record behavior:', e);
+    }
 
     if (!isCorrect) {
       triggerMistakeSequence('wrong_answer');
     } else {
       setModalConfig({ isOpen: true, type: 'correct_answer' });
-      // 完成一封後從清單移除
-      setEmails(prev => prev.filter(e => e.id !== selectedEmail.id));
+      setEmails(prev => prev.map(e => 
+        e.id === selectedEmail?.id ? { ...e, isResolved: true, isReported: true } : e
+      ));
       handleBackToList();
     }
   };
 
   const handleReportPhishing = () => {
-    recordUserBehavior({
-      userId: user?.userId,
-      emailId: selectedEmail?.subject || 'dynamic_payment_page',
-      action: '成功防禦：回報釣魚',
-      score: 100,
-      hoverChecked: hoverCheckedRef.current
-    });
+    try {
+      recordUserBehavior({
+        userId: user?.userId,
+        emailId: selectedEmail?.subject || 'dynamic_payment_page',
+        action: '成功防禦：回報釣魚',
+        score: 100,
+        hoverChecked: hoverCheckedRef.current
+      });
+    } catch (e) {
+      console.warn('Failed to record behavior:', e);
+    }
     setModalConfig({ isOpen: true, type: 'correct_answer' });
-    setEmails(prev => prev.filter(e => e.id !== selectedEmail?.id));
+    setEmails(prev => prev.map(e => 
+      e.id === selectedEmail?.id ? { ...e, isResolved: true, isReported: true } : e
+    ));
     handleBackToList();
   };
 
   const handleLinkClick = (url) => {
     console.log('🚨 Link clicked:', url);
     const duration = Math.floor((Date.now() - userStats.startTime) / 1000);
-    recordUserBehavior({
-      userId: user?.userId,
-      emailId: selectedEmail?.subject || 'dynamic_gen_email',
-      action: '點擊連結',
-      score: -10,
-      mouseMovementCount: userStats.mouseMovementCount,
-      stayDuration: duration,
-      hoverChecked: hoverCheckedRef.current
-    });
+    try {
+      recordUserBehavior({
+        userId: user?.userId,
+        emailId: selectedEmail?.subject || 'dynamic_gen_email',
+        action: '點擊連結',
+        score: -10,
+        mouseMovementCount: userStats.mouseMovementCount,
+        stayDuration: duration,
+        hoverChecked: hoverCheckedRef.current
+      });
+    } catch (e) {
+      console.warn('Failed to record behavior:', e);
+    }
 
-    setView('payment');
+    localStorage.setItem('current_phishing_scenario', JSON.stringify(selectedEmail));
+    navigate('/payment');
   };
 
   const handleHoverTrack = (url, isHovering) => {
@@ -226,63 +382,136 @@ const MainApp = () => {
     if (tabId === 'inbox') {
       handleBackToList();
     } else if (tabId === 'analytics') {
-      setView('analytics');
+      navigate('/analytics');
     }
   };
 
+  const handlePaymentNext = () => {
+    try {
+      recordUserBehavior({
+        userId: user?.userId,
+        emailId: selectedEmail?.subject || 'dynamic_payment_page',
+        action: 'input_credit_card',
+        score: -20,
+        mouseMovementCount: userStats.mouseMovementCount,
+        stayDuration: Math.floor((Date.now() - userStats.startTime) / 1000),
+        hoverChecked: hoverCheckedRef.current
+      });
+    } catch (e) {
+      console.warn('Failed to record behavior:', e);
+    }
+    navigate('/otp');
+  };
+
   const handleOTPVerify = (code) => {
+    try {
+      recordUserBehavior({
+        userId: user?.userId,
+        emailId: selectedEmail?.subject || 'dynamic_otp_page',
+        action: 'input_otp',
+        score: -50,
+        mouseMovementCount: userStats.mouseMovementCount,
+        stayDuration: Math.floor((Date.now() - userStats.startTime) / 1000),
+        hoverChecked: hoverCheckedRef.current
+      });
+    } catch (e) {
+      console.warn('Failed to record behavior:', e);
+    }
+
     if (selectedEmail?.isPhishing) {
       triggerMistakeSequence('click');
     } else {
       setModalConfig({ isOpen: true, type: 'correct_answer' });
-      setEmails(prev => prev.filter(e => e.id !== selectedEmail?.id));
+      setEmails(prev => prev.map(e => 
+        e.id === selectedEmail?.id ? { ...e, isResolved: true, isReported: true } : e
+      ));
       handleBackToList();
     }
   };
 
   const handleRecoveryComplete = (status, reason) => {
-    recordUserBehavior({
-      userId: user?.userId,
-      emailId: selectedEmail?.subject || selectedEmail?.id,
-      event: 'recovery_drill_completed',
-      status,
-      reason
-    });
+    try {
+      recordUserBehavior({
+        userId: user?.userId,
+        emailId: selectedEmail?.subject || selectedEmail?.id,
+        action: status === 'success' ? 'recovery_success' : 'recovery_fail',
+        reason: reason,
+        score: status === 'success' ? 50 : -30
+      });
+    } catch (e) {
+      console.warn('Failed to record behavior:', e);
+    }
+    // Form the education loop: Show feedback modal after recovery
     setModalConfig({ isOpen: true, type: status === 'success' ? 'recovery_success' : 'recovery_fail' });
-    setEmails(prev => prev.filter(e => e.id !== selectedEmail?.id));
+    setEmails(prev => prev.map(e => 
+      e.id === selectedEmail?.id ? { ...e, isResolved: true, isReported: true } : e
+    ));
     handleBackToList();
   };
 
   const renderMainContent = () => {
-    switch (view) {
-      case 'payment': return <PaymentGateway amount="2,990" onNext={() => setView('otp')} onReport={handleReportPhishing} />;
-      case 'otp': return <OTPVerification onVerify={handleOTPVerify} expectedOtp={currentOtpCode} onReport={handleReportPhishing} />;
-      case 'recovery': return <RecoveryDrill onComplete={handleRecoveryComplete} />;
-      case 'analytics': return <Dashboard userId={user?.userId} onBack={handleBackToList} />;
-      case 'detail': return <EmailDetail email={selectedEmail} onBack={handleBackToList} onAction={handleAction} onLinkClick={handleLinkClick} onHoverTrack={handleHoverTrack} />;
-      case 'list':
-      default: return (
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          <EmailList emails={emails} onEmailClick={handleEmailClick} />
-          {/* Loading Animation for Infinite Stream */}
-          {isLoading && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-blue-100 flex items-center gap-2 text-xs font-bold text-blue-600 animate-fade-in z-20">
-              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-              正在接收新郵件...
-            </div>
-          )}
+    if (apiError && view === 'list' && emails.length === 0) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
+          <div className="bg-red-50 p-6 rounded-3xl border border-red-100 max-w-sm">
+            <MdReportGmailerrorred size={48} className="text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-bold text-gray-900 mb-2">後端服務連線失敗</h3>
+            <p className="text-sm text-gray-500 mb-6">{apiError}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-gray-900 text-white px-6 py-2 rounded-xl font-bold hover:bg-black transition-all"
+            >
+              重新整理
+            </button>
+          </div>
         </div>
       );
+    }
+
+    switch (view) {
+      case 'payment': 
+        return selectedEmail ? <PaymentGateway amount="2,990" onNext={handlePaymentNext} onReport={handleReportPhishing} /> : <Navigate to="/" replace />;
+      case 'otp': 
+        return selectedEmail ? <OTPVerification onVerify={handleOTPVerify} expectedOtp={currentOtpCode} onReport={handleReportPhishing} /> : <Navigate to="/" replace />;
+      case 'recovery': 
+        return <RecoveryDrill onComplete={handleRecoveryComplete} />;
+      case 'analytics': 
+        return <Dashboard userId={user?.userId} onBack={handleBackToList} />;
+      case 'detail': 
+        return selectedEmail ? <EmailDetail email={selectedEmail} onBack={handleBackToList} onAction={handleAction} onLinkClick={handleLinkClick} onHoverTrack={handleHoverTrack} /> : <div className="flex-1 flex items-center justify-center">載入中...</div>;
+      case 'list':
+      default: 
+        if (isLoading && emails.length === 0) {
+          return (
+            <div className="flex-1 flex items-center justify-center bg-white">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-sm font-bold text-gray-400 animate-pulse">正在安全加密連線中...</p>
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="flex-1 flex flex-col overflow-hidden relative">
+            <EmailList emails={emails} onEmailClick={handleEmailClick} />
+            {isGenerating && (
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur px-4 py-2 rounded-full shadow-lg border border-blue-100 flex items-center gap-2 text-xs font-bold text-blue-600 animate-fade-in z-20">
+                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+                正在接收新郵件...
+              </div>
+            )}
+          </div>
+        );
     }
   };
 
   const isStandardView = view === 'list' || view === 'detail' || view === 'analytics';
 
   return (
-    <div className="flex flex-col h-screen bg-white relative font-sans overflow-hidden text-slate-700">
+    <div className={`flex flex-col min-h-screen bg-white relative font-sans text-slate-700 ${isStandardView ? 'h-screen overflow-hidden' : 'overflow-y-auto'}`}>
       {isStandardView && <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />}
       
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className={`flex-1 flex ${isStandardView ? 'overflow-hidden' : ''} relative`}>
         {/* Task 2: RWD Sidebar */}
         {isStandardView && (
           <div className={`
@@ -298,8 +527,7 @@ const MainApp = () => {
           <div className="fixed inset-0 bg-black/40 z-30 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>
         )}
 
-        <main className={`flex-1 flex flex-col bg-white overflow-hidden relative ${isStandardView ? 'border-t border-gray-100' : ''}`}>
-          {/* Mobile view logic: hide list when detail is open */}
+        <main className={`flex-1 flex flex-col bg-white relative ${isStandardView ? 'overflow-hidden border-t border-gray-100' : ''}`}>
           <div className={`flex-1 flex flex-col h-full ${view === 'detail' && 'fixed inset-0 z-50 md:relative md:z-0'} bg-white`}>
             {renderMainContent()}
           </div>
@@ -334,7 +562,25 @@ const App = () => {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/payment" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
+        <Route path="/otp" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
+        <Route path="/recovery" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
+        <Route path="/email/:id" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
         <Route path="/" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
+  );
+};
+
+const ProtectedRoute = ({ children }) => {
+  const { user } = useUser();
+  return user ? children : <Navigate to="/login" replace />;
+};
+
+export default App;
+edRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useNavigate } from 'react-router-dom';
 import { 
   MdArrowBack, 
   MdArchive, 
@@ -30,7 +31,7 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
     if (target) {
       e.preventDefault();
       e.stopPropagation();
-      const href = target.getAttribute('href') || '#';
+      const href = target.getAttribute('href') || '模擬連結';
       if (onLinkClick) onLinkClick(href);
     }
   };
@@ -106,17 +107,17 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
       {/* 信件內容區 */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-normal text-gray-900 mb-6 md:mb-8 md:ml-14 italic font-black">{email.subject}</h1>
+          <h1 className="text-xl md:text-2xl font-normal text-gray-900 mb-6 md:mb-8 md:ml-14 italic font-black">{email?.subject}</h1>
 
           <div className="flex items-start gap-3 md:gap-4 mb-8">
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-base md:text-lg flex-shrink-0 font-medium shadow-md">
-              {email.senderName ? email.senderName[0] : 'U'}
+              {email?.senderName ? email.senderName[0] : 'U'}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-gray-900 text-sm md:text-base">{email.senderName}</span>
+                <span className="font-bold text-gray-900 text-sm md:text-base">{email?.senderName}</span>
                 <span className="text-gray-500 text-[10px] md:text-xs truncate">
-                  {showDetails ? `<${email.senderEmail}>` : `<${email.senderEmail?.split('@')[0]?.substring(0, 3)}...@...>`}
+                  {showDetails ? `<${email?.senderEmail}>` : `<${email?.senderEmail?.split('@')[0]?.substring(0, 3)}...@...>`}
                 </span>
                 <button 
                   className={`p-0.5 hover:bg-gray-100 rounded transition-transform ${showDetails ? 'rotate-180' : ''}`}
@@ -127,8 +128,9 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
               </div>
               {showDetails && (
                 <div className="mt-2 p-3 bg-white border border-gray-200 rounded-xl shadow-lg text-xs md:text-sm text-gray-600 space-y-1 z-20 relative">
-                  <div><span className="inline-block w-16 font-bold text-slate-800">寄件者：</span>{email.senderName} &lt;{email.senderEmail}&gt;</div>
+                  <div><span className="inline-block w-16 font-bold text-slate-800">寄件者：</span>{email?.senderName} &lt;{email?.senderEmail}&gt;</div>
                   <div><span className="inline-block w-16 font-bold text-slate-800">時間：</span>{formatCurrentTime()}</div>
+                  <div><span className="inline-block w-16 font-bold text-slate-800">主旨：</span>{email?.subject}</div>
                   <div><span className="inline-block w-16 font-bold text-slate-800">寄給：</span>我 &lt;user@company.com&gt;</div>
                 </div>
               )}
@@ -146,8 +148,18 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
             onMouseOver={handleMouseOver}
             onMouseOut={handleMouseOut}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {email.bodyMarkdown || email.content}
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: ({ node, ...props }) => (
+                  <a
+                    {...props}
+                    className="text-blue-600 hover:text-blue-800 underline cursor-pointer phishing-link"
+                  />
+                )
+              }}
+            >
+              {email?.bodyMarkdown || email?.bodyHtml || email?.content || '信件內容無法顯示...'}
             </ReactMarkdown>
           </div>
 

@@ -1,35 +1,102 @@
 [
   {
-    "id": "1",
-    "senderName": "台灣高鐵",
-    "senderEmail": "noreply@thsrc-promo.net",
-    "realSender": "system@thsrc.com.tw",
-    "subject": "【緊急通知】高鐵大學生優惠票扣款失敗，請儘速更新付款資訊",
-    "content": "<p>親愛的用戶您好，</p><p>我們偵測到您的訂單 <b>#TH882910</b> 大學生優惠票扣款失敗。為避免您的座位被取消，請點擊下方按鈕完成更新資訊：</p><a href='http://thsrc-verify.net/billing' class='phishing-link'>立即前往更新付款資訊並保留座位</a><p>若逾期未處理，系統將自動取消預約。</p>",
-    "isPhishing": true,
-    "explanation": "此信件為典型的『緊迫感』釣魚。破綻：1. 寄件者網域 thsrc-promo.net 非官方 domain。2. 超連結網址 thsrc-verify.net 為詐騙釣魚網站。",
-    "suspiciousElements": ["假網域", "急迫語氣", "不當連結"]
-  },
-  {
-    "id": "2",
-    "senderName": "Steam Support",
-    "senderEmail": "account-verify@steampower.com",
-    "realSender": "noreply@steampowered.com",
-    "subject": "Your Steam Account: Recent login from a new device",
-    "content": "<p>Hello,</p><p>Your Steam account was recently accessed from a new IP address: <b>103.24.12.19 (Moscow, RU)</b>.</p><p>If this was not you, please secure your account immediately by clicking the button below:</p><a href='https://steamcommunitly.com/login' class='phishing-link'>Verify and Secure My Account Now</a>",
-    "isPhishing": true,
-    "explanation": "經典的『帳號異常』釣魚。破綻：1. 寄件者網域 steampower.com 漏掉了一個 'ed'。2. 連結網址 steamcommunitly.com 多了一個 'l'。",
-    "suspiciousElements": ["拼寫錯誤的連結", "假冒寄件者"]
-  },
-  {
-    "id": "3",
-    "senderName": "Apple Pay",
-    "senderEmail": "support@apple.com",
-    "realSender": "support@apple.com",
-    "subject": "您已成功支付 NT$ 2,990 元給 LINE PAY",
-    "content": "<p>感謝您使用 Apple Pay。您的交易已完成。</p><a href='https://apple.com/support' class='phishing-link'>如果您沒有授權此交易，請點此聯繫 Apple 支援中心進行申訴</a>",
+    "id": "safe-1",
+    "senderName": "國立臺灣大學教務處",
+    "senderEmail": "academic@ntu.edu.tw",
+    "subject": "【通知】115學年度第一學期選課注意事項",
+    "bodyMarkdown": "親愛的同學您好：\n\n115學年度第一學期選課即將開始，請務必於規定時間內完成初選登記。\n詳細選課手冊請至 [教務處官網](https://www.aca.ntu.edu.tw) 下載。\n\n教務處 敬啟",
     "isPhishing": false,
-    "explanation": "這是一封正常的通知信。連結指向官方 apple.com/support，且語氣正常。",
+    "explanation": "這是正常的學校行政通知。連結指向正點的 .edu.tw 網域，語氣官方且無任何索取個資行為。",
     "suspiciousElements": []
+  },
+  {
+    "id": "phish-1",
+    "senderName": "國泰世華銀行 Cathay Bank",
+    "senderEmail": "security@cathay-notify.com",
+    "subject": "【重要安全警告】偵測到您的帳戶有異常登入行為",
+    "bodyMarkdown": "親愛的客戶您好：\n\n我們偵測到您的網銀帳戶於 2026/06/07 14:32 從未授權的裝置登入（地點：菲律賓 馬尼拉）。\n\n若非您本人操作，請立即點擊下方按鈕進行安全驗證並變更密碼，以防止資金流出：\n\n[立即完成安全驗證](https://cathay-bk-verify.net/security)\n\n*注意：若於 30 分鐘內未完成驗證，系統將暫時凍結您的轉帳功能*",
+    "isPhishing": true,
+    "explanation": "典型的『恐懼感』釣魚。破綻：1. 寄件者網域 cathay-notify.com 非官方 cathaybk.com.tw。2. 連結網址 cathay-bk-verify.net 為假冒網域。3. 利用時間壓力威脅凍結帳戶。",
+    "suspiciousElements": ["假網域", "急迫威脅", "異常登入誘餌"]
+  },
+  {
+    "id": "safe-2",
+    "senderName": "GitHub",
+    "senderEmail": "noreply@github.com",
+    "subject": "[GitHub] A personal access token has been created",
+    "bodyMarkdown": "Hi user,\n\nA personal access token (classic) was recently added to your account.\n\nIf you did not create this token, you can [view and revoke it](https://github.com/settings/tokens).\n\nThanks,\nThe GitHub Team",
+    "isPhishing": false,
+    "explanation": "正常的 GitHub 安全通知。網址正確且符合常見安全機制流程。",
+    "suspiciousElements": []
+  },
+  {
+    "id": "phish-2",
+    "senderName": "Shopee 蝦皮購物",
+    "senderEmail": "order-update@shoppe-support.net",
+    "subject": "【支付失敗】您的訂單 #SHP882910 付款未成功，請重新驗證",
+    "bodyMarkdown": "您好，\n\n您在蝦皮購物的訂單付款失敗。由於金流系統升級，請您點擊下方連結重新完成信用卡驗證，否則訂單將於 2 小時後自動取消。\n\n[重新驗證信用卡付款](https://shopee-verify.com/pay)\n\n造成不便，敬請見諒。",
+    "isPhishing": true,
+    "explanation": "『網購付款』詐騙。破綻：1. 寄件者將 Shopee 拼錯為 Shoppe。2. 連結指向 shopee-verify.com 而非官方 shopee.tw。",
+    "suspiciousElements": ["拼寫錯誤", "偽造連結", "限時壓力"]
+  },
+  {
+    "id": "safe-3",
+    "senderName": "Google",
+    "senderEmail": "no-reply@accounts.google.com",
+    "subject": "安全性警告：新的 Windows 裝置已登入您的帳戶",
+    "bodyMarkdown": "您的 Google 帳戶已在新的 Windows 裝置上登入。 \n\n如果您剛登入了這台裝置，則不必採取任何行動。 \n如果這不是您，請 [檢查您的帳戶活動](https://myaccount.google.com/notifications) 並加強安全性。",
+    "isPhishing": false,
+    "explanation": "Google 官方的安全性提醒。連結指向正確的 google.com 官方網域。",
+    "suspiciousElements": []
+  },
+  {
+    "id": "phish-3",
+    "senderName": "中國信託 CTBC Bank",
+    "senderEmail": "service@ctbc-bank-card.com",
+    "subject": "【防詐騙宣導】請完成您的 3D Secure 信用卡身分驗證",
+    "bodyMarkdown": "尊敬的客戶：\n\n為響應政府防詐騙政策，即日起您的信用卡須完成年度身分同步驗證始可繼續於網路刷卡。\n\n請於三日內完成驗證，以免影響使用權益：\n\n[立即進入身分驗證系統](https://ctbc-secure-verify.net/auth)\n\n中信銀行 祝您用卡愉快",
+    "isPhishing": true,
+    "explanation": "反向利用『防詐騙』名義的詐騙。破綻：1. 寄件者網域 ctbc-bank-card.com 非官方。2. 要求在第三方網頁輸入信用卡資訊。3. 利用『權益影響』誘騙點擊。",
+    "suspiciousElements": ["假借官方名義", "偽造網域"]
+  },
+  {
+    "id": "safe-4",
+    "senderName": "foodpanda",
+    "senderEmail": "receipt@foodpanda.tw",
+    "subject": "您的 foodpanda 訂單收據",
+    "bodyMarkdown": "感謝您的訂購！\n\n您的訂單 #fd-12345 已經送達。\n總計：NT$ 350\n付款方式：Apple Pay\n\n您可以 [在應用程式中查看詳情](https://www.foodpanda.com.tw/orders)。",
+    "isPhishing": false,
+    "explanation": "正常的電子收據信件。內容詳實且連結正確。",
+    "suspiciousElements": []
+  },
+  {
+    "id": "phish-4",
+    "senderName": "LINE Pay 客服中心",
+    "senderEmail": "linepay-service@line-support.net",
+    "subject": "【警告】您的 LINE Pay 付款功能即將停用，請重新驗證身分",
+    "bodyMarkdown": "您好，\n\n由於您的帳戶資訊不全，根據最新法規，您的 LINE Pay 付款功能將於 2026/06/10 停用。\n\n請立即點擊下方連結完成身分驗證以保留完整功能：\n\n[立即驗證 LINE Pay 帳戶](https://linepay-auth-center.com/verify)\n\nLINE Pay 團隊敬上",
+    "isPhishing": true,
+    "explanation": "針對 LINE Pay 使用者的詐騙。破綻：1. 寄件網域 line-support.net 非官方（應為 line.me 或 linecorp.com）。2. 連結網址明顯為第三方釣魚網頁。",
+    "suspiciousElements": ["功能停用威脅", "假冒網域"]
+  },
+  {
+    "id": "safe-5",
+    "senderName": "Coursera",
+    "senderEmail": "no-reply@t.mail.coursera.org",
+    "subject": "課程提醒：機器學習實務課程即將開始",
+    "bodyMarkdown": "您好，\n\n您訂閱的「機器學習實務」課程有新的講義更新。請登入平台查看最新教材。\n\n[前往我的課程](https://www.coursera.org/learn/ml-practice)\n\n學習愉快！",
+    "isPhishing": false,
+    "explanation": "正常的學習平台通知。連結與寄件者皆為官方合法網域。",
+    "suspiciousElements": []
+  },
+  {
+    "id": "phish-5",
+    "senderName": "量化 AI 投資實驗室",
+    "senderEmail": "profit-lab@ai-wealth-growth.com",
+    "subject": "【限定邀請】保證獲利 20%！AI 量化交易機器人免費試用",
+    "bodyMarkdown": "想在通膨時代保住財富嗎？\n\n我們開發的最新 AI 交易系統，回測數據顯示每月穩定獲利 20% 以上。\n現在點擊連結註冊，即可領取 NT$ 1,000 試用金：\n\n[立即領取試用金並加入投資群組](https://ai-quant-wealth.cc/join)\n\n*本優惠僅限前 50 名註冊者*",
+    "isPhishing": true,
+    "explanation": "經典『貪婪感』投資詐騙。破綻：1. 宣稱『保證獲利』。2. 提供『試用金』吸引註冊。3. 網域 .cc 為詐騙常用網域。",
+    "suspiciousElements": ["過高報酬承諾", "誘餌獎金", "名額限制"]
   }
 ]

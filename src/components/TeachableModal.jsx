@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdWarningAmber, MdCheckCircle, MdError, MdInfoOutline, MdLightbulbOutline } from 'react-icons/md';
 
 const TeachableModal = ({ isOpen, onClose, email, triggerType }) => {
+  if (!isOpen) return null;
+
   const isWarning = triggerType === 'click' || triggerType === 'wrong_answer' || triggerType === 'recovery_fail';
   const isRecovery = triggerType === 'recovery_success' || triggerType === 'recovery_fail';
 
@@ -16,6 +18,10 @@ const TeachableModal = ({ isOpen, onClose, email, triggerType }) => {
       default: return '演練解析';
     }
   };
+
+  // Safe fallback for email explanation
+  const explanation = email?.explanation || '這封信件利用了緊急感與利益誘惑（如扣款失敗、優惠失效）來誘使您在慌亂中做出決定。';
+  const suspiciousElements = email?.suspiciousElements || [];
 
   return (
     <AnimatePresence>
@@ -62,13 +68,13 @@ const TeachableModal = ({ isOpen, onClose, email, triggerType }) => {
                       為什麼它是釣魚信？
                     </h4>
                     <p className="text-gray-700 leading-relaxed text-sm">
-                      {email?.explanation || '這封信件利用了緊急感與利益誘惑（如扣款失敗、優惠失效）來誘使您在慌亂中做出決定。'}
+                      {explanation}
                     </p>
                   </div>
                   
                   <div className="flex gap-2 flex-wrap">
-                    {email?.suspiciousElements?.length > 0 ? (
-                      email.suspiciousElements.map((el, i) => (
+                    {suspiciousElements.length > 0 ? (
+                      suspiciousElements.map((el, i) => (
                         <span key={i} className="bg-white text-red-600 text-[11px] font-bold px-3 py-1 rounded-full border border-red-200 shadow-sm">
                           #{el}
                         </span>
