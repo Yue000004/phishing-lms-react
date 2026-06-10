@@ -38,3 +38,10 @@ app.get('/api/health', (req, res) => {
 app.listen(PORT, () => {
   console.log(`✅ 伺服器已成功啟動，正在監聽 Port ${PORT}`);
 });
+
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Phishing LMS Backend is running',
+  });
+});

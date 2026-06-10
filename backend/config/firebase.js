@@ -17,7 +17,10 @@ try {
     });
 
     db = admin.firestore();
-
+    
+    console.log("PROJECT ID:", process.env.FIREBASE_PROJECT_ID);
+    console.log("CLIENT EMAIL:", process.env.FIREBASE_CLIENT_EMAIL);
+    console.log("PRIVATE KEY START:", process.env.FIREBASE_PRIVATE_KEY?.slice(0, 30));
     console.log(
       "[Firebase] Admin SDK initialized successfully"
     );
