@@ -1,36 +1,35 @@
 const admin = require("firebase-admin");
 
 let db = null;
+let firebaseReady = false;
 
 try {
-  if (
-    process.env.FIREBASE_PROJECT_ID &&
-    process.env.FIREBASE_CLIENT_EMAIL &&
-    process.env.FIREBASE_PRIVATE_KEY_BASE64
-  ) {
-    const privateKey = Buffer.from(
-      process.env.FIREBASE_PRIVATE_KEY_BASE64,
-      "base64"
-    ).toString("utf-8");
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-    console.log("DECODED KEY START:", privateKey.slice(0, 30));
-
+  if (projectId && clientEmail && privateKey) {
     admin.initializeApp({
       credential: admin.credential.cert({
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey,
+        projectId,
+        clientEmail,
+        privateKey: privateKey.replace(/\\n/g, "\n"),
       }),
     });
 
     db = admin.firestore();
+    firebaseReady = true;
 
-    console.log("[Firebase] Admin SDK initialized successfully");
+    console.log("[Firebase] ✅ initialized");
   } else {
-    console.warn("[Firebase] Missing Firebase environment variables");
+    console.warn("[Firebase] ⚠️ disabled (missing env)");
   }
-} catch (error) {
-  console.error("[Firebase] Initialization failed:", error.message);
+} catch (err) {
+  console.warn("[Firebase] ⚠️ disabled:", err.message);
 }
 
-module.exports = { admin, db };
+module.exports = {
+  admin,
+  db,
+  firebaseReady,
+};
