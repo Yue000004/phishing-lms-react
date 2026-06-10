@@ -15,11 +15,14 @@ const TeachableModal = ({ isOpen, onClose, email, triggerType }) => {
       case 'correct_answer': return '正確判斷！您成功避開了陷阱';
       case 'recovery_success': return '搶救成功！您在黃金時間內完成了掛失';
       case 'recovery_fail': return '搶救失敗：資金已不幸全數流出';
+      case 'safe_completed': return '成功完成正常信件流程';
+
       default: return '演練解析';
     }
   };
 
   // Safe fallback for email explanation
+  const isPhishingEmail = email?.isPhishing === true;
   const explanation = email?.explanation || '這封信件利用了緊急感與利益誘惑（如扣款失敗、優惠失效）來誘使您在慌亂中做出決定。';
   const suspiciousElements = email?.suspiciousElements || [];
 
@@ -56,35 +59,61 @@ const TeachableModal = ({ isOpen, onClose, email, triggerType }) => {
 
             <div className="p-8 max-h-[70vh] overflow-y-auto">
               {/* 信件破綻解析 */}
-              <div className="border-2 border-red-200 rounded-xl p-6 mb-6 relative bg-red-50/30">
-                <div className="absolute -top-3 left-6 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm">
-                  Phishing Analysis
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-2">
-                      <MdInfoOutline className="text-red-500" />
-                      為什麼它是釣魚信？
-                    </h4>
-                    <p className="text-gray-700 leading-relaxed text-sm">
-                      {explanation}
-                    </p>
+              {isPhishingEmail && (
+                <div className="border-2 border-red-200 rounded-xl p-6 mb-6 relative bg-red-50/30">
+                  <div className="absolute -top-3 left-6 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm">
+                    Phishing Analysis
                   </div>
-                  
-                  <div className="flex gap-2 flex-wrap">
-                    {suspiciousElements.length > 0 ? (
-                      suspiciousElements.map((el, i) => (
-                        <span key={i} className="bg-white text-red-600 text-[11px] font-bold px-3 py-1 rounded-full border border-red-200 shadow-sm">
-                          #{el}
+
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-bold text-gray-800 flex items-center gap-2 mb-2">
+                        <MdInfoOutline className="text-red-500" />
+                        為什麼它是釣魚信？
+                      </h4>
+
+                      <p className="text-gray-700 leading-relaxed text-sm">
+                        {explanation}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-2 flex-wrap">
+                      {suspiciousElements.length > 0 ? (
+                        suspiciousElements.map((el, i) => (
+                          <span
+                            key={i}
+                            className="bg-white text-red-600 text-[11px] font-bold px-3 py-1 rounded-full border border-red-200 shadow-sm"
+                          >
+                            #{el}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="bg-white text-red-600 text-[11px] font-bold px-3 py-1 rounded-full border border-red-200 shadow-sm">
+                          #偽造網域
                         </span>
-                      ))
-                    ) : (
-                      <span className="bg-white text-red-600 text-[11px] font-bold px-3 py-1 rounded-full border border-red-200 shadow-sm">#偽造網域</span>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+              {!isPhishingEmail && (
+                <div className="border-2 border-green-200 rounded-xl p-6 mb-6 relative bg-green-50/30">
+                  <div className="absolute -top-3 left-6 bg-green-500 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm">
+                    Safe Email
+                  </div>
+
+                  <h4 className="font-bold text-gray-800 mb-2">
+                    為什麼這是正常信件？
+                  </h4>
+
+                  <p className="text-gray-700 text-sm leading-relaxed">
+                    這封信件來自合法來源，連結指向正常官方網站，
+                    內容符合一般行政或商業流程。
+                    在真實世界中，使用者應完成正常操作流程，
+                    而不是因為看到連結就直接判定為釣魚郵件。
+                  </p>
+                </div>
+              )}
 
               {/* 搶救行為解析 (只有在 recovery 觸發後顯示) */}
               {isRecovery && (

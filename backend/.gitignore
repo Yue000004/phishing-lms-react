@@ -1,0 +1,16 @@
+# Build
+dist/
+build/
+
+# Firebase Admin SDK
+backend/config/*.json
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+
+# Dependencies
+node_modules/

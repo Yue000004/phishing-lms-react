@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useUser } from '../context/UserContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { MdSecurity, MdPerson, MdWork, MdFavorite, MdEmail, MdLock, MdWc } from 'react-icons/md';
+import apiClient from '../services/api';
 
 /**
  * Task 6: 修復 Register.jsx 滾動問題與高度計算
@@ -32,16 +33,26 @@ const Register = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.password || !formData.gender || !formData.occupation || formData.interests.length === 0) {
-      alert('請完整填寫註冊資訊，並至少選擇一項興趣');
-      return;
+
+    try {
+      const response = await apiClient.post('/auth/register', formData);
+
+      const data = response.data;
+
+      if (!data.success) {
+        alert(data.error);
+        return;
+      }
+
+      alert('註冊成功');
+      navigate('/login');
+
+    } catch (error) {
+      console.error(error);
+      alert('註冊失敗');
     }
-    
-    // Show alert and redirect to login
-    alert('註冊成功！請重新登入。');
-    navigate('/login');
   };
 
   return (

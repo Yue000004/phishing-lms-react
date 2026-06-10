@@ -17,8 +17,9 @@ import Login from './components/Login';
 import Register from './components/Register';
 import HoverStatusBar from './components/HoverStatusBar';
 import { UserProvider, useUser } from './context/UserContext';
-import { recordUserBehavior } from './services/api';
+import apiClient, { recordUserBehavior } from './services/api';
 import { MdReportGmailerrorred } from 'react-icons/md';
+import axios from 'axios';
 
 const MainApp = () => {
   const { user, logout } = useUser();
@@ -98,7 +99,7 @@ const MainApp = () => {
    */
 
 
-  const fetchNewEmails = async (count = 2) => {
+  const fetchNewEmails = async (count = 10) => {
     if (isGenerating || hasStartedFetching.current) return;
     setIsGenerating(true);
     hasStartedFetching.current = true;
@@ -106,28 +107,46 @@ const MainApp = () => {
     console.log(`[P1] 背景補充 ${count} 封混合演練信件 (20% 釣魚, 80% 安全)...`);
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for AI
+    const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 mins timeout for AI
 
     try {
-      const requests = Array.from({ length: count }).map(() => {
-        const type = Math.random() < 0.2 ? 'phishing' : 'safe';
-        return fetch('http://localhost:5000/api/phishing/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({ 
-            scenario: type === 'phishing' ? '隨機金融詐騙' : '日常行政通知', 
-            difficulty: '高',
-            occupation: user?.occupation,
-            interests: user?.interests,
-            userId: user?.userId,
-            type: type
-          })
-        }).then(res => res.ok ? res.json() : null);
-      });
+      const results = [];
 
-      const results = await Promise.all(requests);
+      for (let i = 0; i < count; i++) {
+        const type = Math.random() < 0.2 ? 'phishing' : 'safe';
+
+        try {
+          const response = await apiClient.post(
+            '/phishing/generate',
+            {
+              scenario:
+                type === 'phishing'
+                  ? '隨機金融詐騙'
+                  : '日常行政通知',
+              difficulty: '高',
+              occupation: user?.occupation,
+              interests: user?.interests,
+              userId: user?.userId,
+              type
+            },
+            { signal: controller.signal }
+          );
+
+          if (response.data) {
+            results.push(response.data);
+            console.log(`✅ 已生成 ${i + 1}/${count} 封`);
+          }
+        } catch (err) {
+          console.warn(
+            `⚠️ 第 ${i + 1} 封生成失敗`,
+            err.message
+          );
+        }
+      }
+
       clearTimeout(timeoutId);
+
+
       const filteredResults = results.filter(Boolean);
 
       let finalBatch = [];
@@ -156,10 +175,13 @@ const MainApp = () => {
         setEmails(prev => [...prev, ...finalBatch]);
       }
     } catch (error) {
-      console.error('Auto replenishment failed:', error);
+      console.error(
+        '🚨 Auto replenishment failed',
+        error.response?.data || error.message
+      );
       // P1 Fallback: Use mockData on error
       const fallbackMocks = [...mockEmails].sort(() => 0.5 - Math.random()).slice(0, count);
-      setEmails(prev => [...prev, ...fallbackMocks.map(m => ({ ...m, id: 'fallback-' + Math.random() }))]);
+      setEmails(prev => [...prev, ...fallbackMocks.map(m => ({ ...m, id: crypto.randomUUID() }))]);
     } finally {
       setIsGenerating(false);
       hasStartedFetching.current = false;
@@ -177,9 +199,7 @@ const MainApp = () => {
 
       try {
         console.log('[App] 讀取歷史信件...');
-        const res = await axios.get(`http://localhost:5000/api/phishing/emails/${user.userId}`, {
-            timeout: 10000
-        });
+        const res = await apiClient.get(`/phishing/emails/${user.userId}`);
         
         let historyEmails = [];
         // 修正：使用 res.data.data 並確保 emails 是 array
@@ -202,7 +222,7 @@ const MainApp = () => {
         setIsInitialized(true);
 
         if (historyEmails.length < 3) {
-          await fetchNewEmails(3 - historyEmails.length);
+          await fetchNewEmails(10 - historyEmails.length);
         }
       } catch (error) {
         console.error('Failed to load history:', error);
@@ -248,8 +268,11 @@ const MainApp = () => {
     try {
       recordUserBehavior({
         userId: user?.userId,
-        emailId: selectedEmail?.subject || selectedEmail?.id,
+        emailId: selectedEmail?.id,
+        emailSubject: selectedEmail?.subject,
         action: 'failed_phishing_test',
+        correct: false,
+        isPhishing: selectedEmail?.isPhishing,
         mouseMovementCount: userStats.mouseMovementCount,
         stayDuration: duration,
         hoverChecked: hoverCheckedRef.current,
@@ -279,7 +302,10 @@ const MainApp = () => {
       recordUserBehavior({
         userId: user?.userId,
         emailId: email.id,
+        emailSubject: email.subject,
         action: 'open_email',
+        correct: true,
+        isPhishing: email.isPhishing,
         timestamp: new Date().toISOString()
       });
     } catch (e) {
@@ -299,15 +325,27 @@ const MainApp = () => {
     const isCorrect = (actionType === 'phishing' && selectedEmail?.isPhishing) || 
                       (actionType === 'safe' && !selectedEmail?.isPhishing);
     
+    // Map actionType to standardized action string
+    let standardAction = actionType;
+    if (actionType === 'phishing') standardAction = 'report_phishing';
+    if (actionType === 'safe') standardAction = 'mark_safe';
+
     const duration = Math.floor((Date.now() - userStats.startTime) / 1000);
     try {
       recordUserBehavior({
         userId: user?.userId,
-        emailId: selectedEmail?.subject || selectedEmail?.id,
-        action: actionType,
+        emailId: selectedEmail?.id,
+        emailSubject: selectedEmail?.subject,
+
+        action: standardAction,
+
+        correct: isCorrect,
+        isPhishing: selectedEmail?.isPhishing,
+
         mouseMovementCount: userStats.mouseMovementCount,
         stayDuration: duration,
         hoverChecked: hoverCheckedRef.current,
+
         score: isCorrect ? 100 : 0
       });
     } catch (e) {
@@ -326,22 +364,7 @@ const MainApp = () => {
   };
 
   const handleReportPhishing = () => {
-    try {
-      recordUserBehavior({
-        userId: user?.userId,
-        emailId: selectedEmail?.subject || 'dynamic_payment_page',
-        action: '成功防禦：回報釣魚',
-        score: 100,
-        hoverChecked: hoverCheckedRef.current
-      });
-    } catch (e) {
-      console.warn('Failed to record behavior:', e);
-    }
-    setModalConfig({ isOpen: true, type: 'correct_answer' });
-    setEmails(prev => prev.map(e => 
-      e.id === selectedEmail?.id ? { ...e, isResolved: true, isReported: true } : e
-    ));
-    handleBackToList();
+      handleAction('phishing');
   };
 
   const handleLinkClick = (url) => {
@@ -350,9 +373,12 @@ const MainApp = () => {
     try {
       recordUserBehavior({
         userId: user?.userId,
-        emailId: selectedEmail?.subject || 'dynamic_gen_email',
-        action: '點擊連結',
-        score: -10,
+        emailId: selectedEmail?.id || null,
+        emailSubject: selectedEmail?.subject,
+        action: 'click_link',
+        correct: !selectedEmail?.isPhishing,
+        isPhishing: selectedEmail?.isPhishing,
+        score: selectedEmail?.isPhishing ? -10 : 0,
         mouseMovementCount: userStats.mouseMovementCount,
         stayDuration: duration,
         hoverChecked: hoverCheckedRef.current
@@ -390,9 +416,12 @@ const MainApp = () => {
     try {
       recordUserBehavior({
         userId: user?.userId,
-        emailId: selectedEmail?.subject || 'dynamic_payment_page',
+        emailId: selectedEmail?.id || null,
+        emailSubject: selectedEmail?.subject,
         action: 'input_credit_card',
-        score: -20,
+        correct: !selectedEmail?.isPhishing,
+        isPhishing: selectedEmail?.isPhishing,
+        score: selectedEmail?.isPhishing ? -20 : 0,
         mouseMovementCount: userStats.mouseMovementCount,
         stayDuration: Math.floor((Date.now() - userStats.startTime) / 1000),
         hoverChecked: hoverCheckedRef.current
@@ -407,9 +436,12 @@ const MainApp = () => {
     try {
       recordUserBehavior({
         userId: user?.userId,
-        emailId: selectedEmail?.subject || 'dynamic_otp_page',
+        emailId: selectedEmail?.id || null,
+        emailSubject: selectedEmail?.subject,
         action: 'input_otp',
-        score: -50,
+        correct: !selectedEmail?.isPhishing,
+        isPhishing: selectedEmail?.isPhishing,
+        score: selectedEmail?.isPhishing ? -50 : 0,
         mouseMovementCount: userStats.mouseMovementCount,
         stayDuration: Math.floor((Date.now() - userStats.startTime) / 1000),
         hoverChecked: hoverCheckedRef.current
@@ -421,11 +453,18 @@ const MainApp = () => {
     if (selectedEmail?.isPhishing) {
       triggerMistakeSequence('click');
     } else {
-      setModalConfig({ isOpen: true, type: 'correct_answer' });
-      setEmails(prev => prev.map(e => 
-        e.id === selectedEmail?.id ? { ...e, isResolved: true, isReported: true } : e
-      ));
-      handleBackToList();
+      setModalConfig({
+        isOpen: true,
+        type: 'safe_completed'
+      });
+
+      setEmails(prev =>
+        prev.map(e =>
+          e.id === selectedEmail?.id
+            ? { ...e, isResolved: true }
+            : e
+        )
+      );
     }
   };
 
@@ -433,8 +472,11 @@ const MainApp = () => {
     try {
       recordUserBehavior({
         userId: user?.userId,
-        emailId: selectedEmail?.subject || selectedEmail?.id,
+        emailId: selectedEmail?.id,
+        emailSubject: selectedEmail?.subject,
         action: status === 'success' ? 'recovery_success' : 'recovery_fail',
+        correct: status === 'success',
+        isPhishing: true,
         reason: reason,
         score: status === 'success' ? 50 : -30
       });
@@ -447,6 +489,23 @@ const MainApp = () => {
       e.id === selectedEmail?.id ? { ...e, isResolved: true, isReported: true } : e
     ));
     handleBackToList();
+  };
+  const handleModalClose = () => {
+    const currentType = modalConfig.type;
+
+    setModalConfig(prev => ({
+      ...prev,
+      isOpen: false
+    }));
+
+    if (
+      currentType === 'safe_completed' ||
+      currentType === 'correct_answer' ||
+      currentType === 'recovery_success' ||
+      currentType === 'recovery_fail'
+    ) {
+      handleBackToList();
+    }
   };
 
   const renderMainContent = () => {
@@ -467,7 +526,7 @@ const MainApp = () => {
         </div>
       );
     }
-
+  
     switch (view) {
       case 'payment': 
         return selectedEmail ? <PaymentGateway amount="2,990" onNext={handlePaymentNext} onReport={handleReportPhishing} /> : <Navigate to="/" replace />;
@@ -550,7 +609,7 @@ const MainApp = () => {
         </div>
       )}
 
-      <TeachableModal isOpen={modalConfig.isOpen} triggerType={modalConfig.type} email={selectedEmail} onClose={() => setModalConfig({ ...modalConfig, isOpen: false })} />
+      <TeachableModal isOpen={modalConfig.isOpen} triggerType={modalConfig.type} email={selectedEmail} onClose={handleModalClose} />
       <ToastNotification />
     </div>
   );
@@ -568,19 +627,6 @@ const App = () => {
         <Route path="/analytics" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
         <Route path="/email/:id" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
         <Route path="/" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Router>
-  );
-};
-
-const ProtectedRoute = ({ children }) => {
-  const { user } = useUser();
-  return user ? children : <Navigate to="/login" replace />;
-};
-
-export default App;
-edRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

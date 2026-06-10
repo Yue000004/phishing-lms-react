@@ -127,6 +127,12 @@ router.post('/generate', async (req, res) => {
       generatedAt: new Date().toISOString()
     };
 
+    console.log('================================');
+    console.log('userId from request =', userId);
+    console.log('newEmailData.userId =', newEmailData.userId);
+    console.log('subject =', newEmailData.subject);
+    console.log('================================');
+
     let generatedId = 'ai-' + Date.now();
 
     if (db) {
@@ -165,7 +171,7 @@ router.get('/emails/:userId', async (req, res) => {
     if (!db) return res.json({ success: true, data: [] });
 
     const snapshot = await db.collection('emails').where('userId', '==', userId).get();
-    
+
     let emails = [];
     snapshot.forEach(doc => {
       emails.push({ id: doc.id, ...doc.data() });
@@ -190,6 +196,12 @@ router.get('/emails/:userId', async (req, res) => {
  */
 router.post('/record', async (req, res) => {
   try {
+    console.log(
+      '[Record]',
+      req.body.action,
+      req.body.emailId,
+      req.body.emailSubject
+    );
     const { userId, action } = req.body;
     if (!userId) return res.status(400).json({ error: '缺少 userId' });
 
@@ -232,6 +244,30 @@ router.get('/stats/:userId', async (req, res) => {
 
     const snapshot = await db.collection('user_attempts').where('userId', '==', userId).get();
     
+    const stats = {
+      totalCount: 0,
+      totalStay: 0,
+      totalHover: 0,
+      scores: {
+        greed: {
+          total: 0,
+          count: 0
+        },
+        fear: {
+          total: 0,
+          count: 0
+        },
+        careless: {
+          total: 0,
+          count: 0
+        },
+        urgency: {
+          total: 0,
+          count: 0
+        }
+      }
+    };
+
     if (snapshot.empty) {
       return res.json({ 
         success: true, 
@@ -244,7 +280,14 @@ router.get('/stats/:userId', async (req, res) => {
     const emailIds = new Set();
     snapshot.forEach(doc => {
       const d = doc.data();
-      if (d.emailId) emailIds.add(d.emailId);
+
+      console.log('========== USER ATTEMPT ==========');
+      console.log('emailId =', d.emailId);
+      console.log('action =', d.action);
+
+      if (d.emailId) {
+        emailIds.add(d.emailId);
+      }
     });
 
     let emailMap = {};
@@ -253,11 +296,19 @@ router.get('/stats/:userId', async (req, res) => {
       const emailSnaps = await db.collection('emails').get(); // 簡易做法：抓全量或優化
       emailSnaps.forEach(doc => {
         if (emailIds.has(doc.id) || emailIds.has(doc.data().subject)) {
-          emailMap[doc.id] = doc.data();
-          emailMap[doc.data().subject] = doc.data();
+          emailMap[doc.id] = {
+            id: doc.id,
+            ...doc.data()
+          };
+          emailMap[doc.data().subject] = {
+            id: doc.id,
+            ...doc.data()
+          };
         }
       });
     }
+    console.log('emailIds =', [...emailIds]);
+    console.log('emailMap keys =', Object.keys(emailMap));
 
     let totalRiskScore = 0;
     let sessionsCount = 0;
@@ -277,8 +328,28 @@ router.get('/stats/:userId', async (req, res) => {
 
     snapshot.forEach(doc => {
       const d = doc.data();
-      const email = emailMap[d.emailId] || {};
-      const content = (email.subject + email.bodyMarkdown + (email.redFlags || []).join('')).toLowerCase();
+
+      const email =
+        emailMap[d.emailId] ||
+        emailMap[d.emailSubject];
+
+      if (!email && !d.action.startsWith('recovery')) {
+        console.warn(
+          '[Dashboard] 找不到 email',
+          d.emailId,
+          d.emailSubject
+        );
+        // 如果找不到 email，但有 isPhishing 欄位，我們仍可繼續部分邏輯
+      }
+
+      // 使用紀錄中的 isPhishing，若無則 fallback 到 email 物件
+      const isPhishingEmail = d.isPhishing !== undefined ? d.isPhishing : email?.isPhishing;
+      const content =
+        (
+          (email?.subject || d.emailSubject || '') +
+          (email?.bodyMarkdown || '') +
+          (email?.redFlags || []).join('')
+        ).toLowerCase();
       
       stats.totalCount++;
       stats.totalStay += (d.stayDuration || 0);
@@ -288,52 +359,62 @@ router.get('/stats/:userId', async (req, res) => {
       actionLogs.push({
         id: doc.id,
         action: d.action,
-        emailSubject: email.subject || '系統頁面',
+        emailSubject:
+          email?.subject ||
+          d.emailSubject ||
+          '系統頁面',
         timestamp: d.timestamp ? d.timestamp.toDate() : new Date(),
         score: d.score || 0
       });
 
-      // 計算正確辨識率 (如果是 phishing 且使用者選擇 phishing，或者如果是 safe 且使用者選擇 safe)
-      if (email.id) {
-        if (email.isPhishing) totalPhishingEncountered++;
-        
-        const isCorrect = (d.action === 'phishing' && email.isPhishing) || 
-                          (d.action === 'safe' && !email.isPhishing) ||
-                          (d.action === '成功防禦：回報釣魚');
-        if (isCorrect) correctCount++;
-      }
+      // 計算正確辨識率 (修改目標 13: 改用 correct === true)
+      if (d.correct === true) correctCount++;
+      if (isPhishingEmail === true) totalPhishingEncountered++;
 
       // 如果失敗，統計類型
-      const isFail = d.action === 'failed_phishing_test' || d.action === '點擊連結' || d.action === 'input_credit_card' || d.action === 'input_otp';
-      if (isFail && email.isPhishing) {
+      const isFail = d.correct === false;
+      if (isFail && isPhishingEmail) {
         if (/投資|量化|獲利|獎金/.test(content)) typeStats.investment++;
         else if (/蝦皮|shopee|pchome|訂單|購物/.test(content)) typeStats.shopping++;
         else typeStats.financial++;
       }
-
-      // 計算該次行為的風險點數 (P1 規則)
-      let currentActionRisk = 0;
-      if (d.action === '點擊連結') currentActionRisk = 20;
-      if (d.action === 'input_credit_card') currentActionRisk = 30;
-      if (d.action === 'input_otp') currentActionRisk = 20;
-      if (d.action === 'failed_phishing_test') currentActionRisk = 30; 
       
-      const sId = d.emailId || 'unknown';
+      // 修改目標 11, 12: Dashboard 風險分數重構 (使用 d.correct 和 d.isPhishing)
+      let currentActionRisk = 0;
+      if (d.correct === true) {
+        currentActionRisk = 0;
+      } else {
+        // 只有在行為錯誤時才計算風險
+        if (d.action === 'click_link') currentActionRisk += 20;
+        if (d.action === 'input_credit_card') currentActionRisk += 30;
+        if (d.action === 'input_otp') currentActionRisk += 20;
+        if (d.action === 'failed_phishing_test') currentActionRisk += 30;
+        
+        // 安全信件誤判 (把安全信件當成釣魚回報)
+        if (isPhishingEmail === false && d.action === 'report_phishing') {
+          currentActionRisk += 20;
+        }
+      }
+      
+      const sId = d.emailId || d.emailSubject || 'unknown';
       sessionRisks[sId] = (sessionRisks[sId] || 0) + currentActionRisk;
 
-      // ... existing psychological dimension logic ...
+      // 心理特徵分析 (修改目標 12: 優先判斷 correct 與 isPhishing)
       const isGreed = /退款|中獎|免費|優惠|禮品|獎金|提領/.test(content);
       const isFear = /停用|凍結|非法|警告|被盜|異常|扣款失敗/.test(content);
       const isUrgency = /立即|限時|24小時|火速|儘快|過期/.test(content);
 
-      let carelessScore = 0;
-      if (d.stayDuration < 10) carelessScore += 30;
-      if (!d.hoverChecked) carelessScore += 40;
-      if (d.action === 'input_credit_card') carelessScore += 20;
-      if (d.action === 'input_otp') carelessScore += 10;
-      
-      stats.scores.careless.total += carelessScore;
-      stats.scores.careless.count++;
+      if (isPhishingEmail === true) {
+        let carelessScore = 0;
+
+        if (d.stayDuration < 10) carelessScore += 30;
+        if (!d.hoverChecked) carelessScore += 40;
+        if (d.action === 'input_credit_card') carelessScore += 20;
+        if (d.action === 'input_otp') carelessScore += 10;
+
+        stats.scores.careless.total += carelessScore;
+        stats.scores.careless.count++;
+      }
 
       const weight = isFail ? 80 : 20;
       if (isGreed) {
@@ -373,12 +454,19 @@ router.get('/stats/:userId', async (req, res) => {
         { subject: '急迫感', A: getAvg(stats.scores.urgency), fullMark: 100 }
       ],
       summary: {
-        avgStayDuration: (stats.totalStay / stats.totalCount).toFixed(1),
-        urlCheckRate: Math.round((stats.totalHover / stats.totalCount) * 100),
+        avgStayDuration:
+          stats.totalCount > 0
+            ? (stats.totalStay / stats.totalCount).toFixed(1)
+            : "0.0",
+
+        urlCheckRate:
+          stats.totalCount > 0
+            ? Math.round((stats.totalHover / stats.totalCount) * 100)
+            : 0,
         totalAttempts: stats.totalCount,
         totalRiskScore,
         riskLevel,
-        identificationRate: totalPhishingEncountered > 0 ? Math.round((correctCount / stats.totalCount) * 100) : 100,
+        identificationRate: stats.totalCount > 0 ? Math.round((correctCount / stats.totalCount) * 100) : 100,
         typeStats,
         recentActions: actionLogs.slice(0, 10)
       }

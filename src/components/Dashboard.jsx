@@ -8,6 +8,7 @@ import {
   MdError, MdCheckCircle, MdTimeline, MdHistory 
 } from 'react-icons/md';
 import axios from 'axios';
+import apiClient from '../services/api';
 
 const Dashboard = ({ userId, onBack }) => {
     console.log(
@@ -33,7 +34,7 @@ const Dashboard = ({ userId, onBack }) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`http://localhost:5000/api/dashboard/summary?userId=${userId}`);
+      const response = await apiClient.get(`/dashboard/summary?userId=${userId}`);
       if (response && response.data && response.data.success) {
         const summaryData = response.data.summary || response.data; 
         const rawData = response.data.data;

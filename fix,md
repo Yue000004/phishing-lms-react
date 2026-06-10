@@ -1,0 +1,133 @@
+請全面檢查專案是否存在以下問題：
+
+# 1. Action 命名不一致
+
+搜尋：
+
+action:
+
+列出所有 action 值。
+
+檢查是否同時存在：
+
+- 中文
+- 英文
+- snake_case
+- 自然語言
+
+並提出統一方案。
+
+---
+
+# 2. 資料模型不一致
+
+檢查：
+
+- emailId
+- userId
+- emailSubject
+- isPhishing
+- correct
+
+在：
+
+- React 前端
+- API Router
+- Firestore
+
+是否完全一致。
+
+---
+
+# 3. Dashboard 是否依靠字串推論
+
+搜尋：
+
+if (action ===
+
+switch(action)
+
+找出所有依靠 action 名稱推論業務邏輯的地方。
+
+建議改成：
+
+correct
+isPhishing
+
+等資料欄位驅動。
+
+---
+
+# 4. Fallback 與正式流程是否一致
+
+搜尋：
+
+fallback
+mock
+mockEmails
+randomUUID
+Date.now
+
+檢查：
+
+正式流程與 fallback 流程的資料格式是否完全相同。
+
+---
+
+# 5. Firestore Schema Audit
+
+列出：
+
+emails
+user_attempts
+users
+
+每個 collection 實際欄位。
+
+找出：
+
+- 前端有使用但 Firestore 沒存
+- Firestore 有存但前端沒用
+
+的欄位。
+
+---
+
+# 6. Route Audit
+
+搜尋：
+
+navigate(
+<Route
+useParams
+
+確認：
+
+路由參數與實際資料 ID 是否一致。
+
+---
+
+# 7. API Audit
+
+列出：
+
+所有 router.get
+所有 router.post
+
+確認：
+
+request schema
+response schema
+
+是否有文件化。
+
+---
+
+最後輸出：
+
+Critical
+High
+Medium
+Low
+
+四級風險報告。

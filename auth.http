@@ -1,0 +1,11 @@
+POST http://localhost:5000/api/auth/register
+Content-Type: application/json
+
+{
+  "name":"測試",
+  "email":"test@gmail.com",
+  "password":"123456",
+  "gender":"男",
+  "occupation":"學生",
+  "interests":["遊戲","投資"]
+}

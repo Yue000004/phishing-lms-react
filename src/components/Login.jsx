@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useUser } from '../context/UserContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { MdSecurity, MdEmail, MdLock } from 'react-icons/md';
+import apiClient from '../services/api';
 
 const Login = () => {
   const { login } = useUser();
@@ -11,37 +12,36 @@ const Login = () => {
     password: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
       alert('請輸入帳號密碼');
       return;
     }
-    
-    // Simulate login
-    // In a real app, you'd fetch the user profile from Firestore here
-    const savedUser = localStorage.getItem('phishing_lms_user');
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-      if (user.email === formData.email) {
-        login(user);
-        navigate('/');
+    try {
+      const response = await apiClient.post('/auth/login', formData);
+
+      const data = response.data;
+
+      if (!data.success) {
+        alert(data.error);
         return;
       }
-    }
-    
-    // Default login for demo if no saved user or mismatch
-    const newUser = {
-      userId: 'user-' + Math.random().toString(36).substr(2, 9),
-      name: '測試使用者',
-      email: formData.email,
-      occupation: '工程師',
-      interests: ['遊戲', '購物']
-    };
-    login(newUser);
-    localStorage.setItem('phishing_lms_user', JSON.stringify(newUser));
-    navigate('/');
-  };
+
+      login(data.user);
+
+      localStorage.setItem(
+        'phishing_lms_user',
+        JSON.stringify(data.user)
+      );
+
+      navigate('/');
+
+    } catch (error) {
+      console.error(error);
+      alert('登入失敗');
+    } 
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-y-auto">
