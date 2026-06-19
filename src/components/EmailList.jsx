@@ -49,7 +49,7 @@ const EmailList = ({ emails, onEmailClick }) => {
                   <MdCheckBoxOutlineBlank size={20} className="hidden sm:block text-gray-300 group-hover:text-gray-400" />
                   <MdStarBorder size={20} className="text-gray-300 hover:text-yellow-400" />
                   {/* 寄件者 */}
-                  <div className={`w-[150px] sm:w-[200px] flex-shrink-0 truncate text-sm ${email?.isPhishing ? 'font-bold' : 'text-gray-700'}`}>
+                  <div className={`w-[150px] sm:w-[200px] flex-shrink-0 truncate text-sm ${!email?.isResolved ? 'font-bold text-gray-900' : 'text-gray-500 font-normal'}`}>
                     {email?.senderName}
                   </div>
                 </div>
@@ -62,7 +62,7 @@ const EmailList = ({ emails, onEmailClick }) => {
 
               {/* 主旨與摘要 */}
               <div className="flex-1 min-w-0 flex items-center text-sm overflow-hidden whitespace-nowrap sm:mr-8 ml-8 sm:ml-0">
-                <span className="font-bold text-gray-900 flex-shrink-0 mr-1 truncate max-w-[60%] sm:max-w-none">{email?.subject}</span>
+                <span className={`${!email?.isResolved ? 'font-bold text-gray-900' : 'text-gray-500 font-normal'} flex-shrink-0 mr-1 truncate max-w-[60%] sm:max-w-none`}>{email?.subject}</span>
                 <span className="text-gray-500 truncate hidden sm:inline">- {(email?.content || email?.bodyMarkdown || '').replace(/<[^>]*>?/gm, '')}</span>
               </div>
 

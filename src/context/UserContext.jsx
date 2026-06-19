@@ -7,6 +7,10 @@ export const UserProvider = ({ children }) => {
     const savedUser = localStorage.getItem('phishing_lms_user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+  
+  // Persist emails and initialization globally to prevent unmount reset during routing
+  const [emails, setEmails] = useState([]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const login = (userData) => {
     // Standardizing user data structure
@@ -27,6 +31,8 @@ export const UserProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
+    setEmails([]);
+    setIsInitialized(false);
     localStorage.removeItem('phishing_lms_user');
     localStorage.removeItem('phishing_lms_user_id');
   };
@@ -38,7 +44,16 @@ export const UserProvider = ({ children }) => {
   };
 
   return (
-    <UserContext.Provider value={{ user, login, logout, updateProfile }}>
+    <UserContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      updateProfile, 
+      emails, 
+      setEmails, 
+      isInitialized, 
+      setIsInitialized 
+    }}>
       {children}
     </UserContext.Provider>
   );

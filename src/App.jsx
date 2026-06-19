@@ -22,7 +22,7 @@ import { MdReportGmailerrorred } from 'react-icons/md';
 import axios from 'axios';
 
 const MainApp = () => {
-  const { user, logout } = useUser();
+  const { user, logout, emails, setEmails, isInitialized, setIsInitialized } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -38,7 +38,6 @@ const MainApp = () => {
   }, [location.pathname]);
 
   const [activeTab, setActiveTab] = useState('practice');
-  const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(() => {
     // P0: Fallback to localStorage if state is missing
     try {
@@ -56,7 +55,7 @@ const MainApp = () => {
   const [hoveredHref, setHoveredUrl] = useState(null);
   const hasStartedFetching = useRef(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
+  // isInitialized is stored globally in UserContext
   
   // Tracking Metrics
   const hoverCheckedRef = useRef(false);
