@@ -37,7 +37,7 @@ const MainApp = () => {
     return 'list';
   }, [location.pathname]);
 
-  const [activeTab, setActiveTab] = useState('inbox');
+  const [activeTab, setActiveTab] = useState('practice');
   const [emails, setEmails] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(() => {
     // P0: Fallback to localStorage if state is missing
@@ -369,7 +369,12 @@ const MainApp = () => {
     }
 
     if (!isCorrect) {
-      triggerMistakeSequence('wrong_answer');
+      if (activeTab === 'practice') {
+        // 練習模式：答錯不扣分與驚嚇，直接跳出分析教學對話框
+        setModalConfig({ isOpen: true, type: 'wrong_answer' });
+      } else {
+        triggerMistakeSequence('wrong_answer');
+      }
     } else {
       setModalConfig({ isOpen: true, type: 'correct_answer' });
       setEmails(prev => prev.map(e => 
@@ -403,6 +408,14 @@ const MainApp = () => {
       console.warn('Failed to record behavior:', e);
     }
 
+    if (activeTab === 'practice') {
+      if (selectedEmail?.isPhishing) {
+        // 練習模式：直接點破錯誤，展示紅旗指標
+        setModalConfig({ isOpen: true, type: 'wrong_answer' });
+        return;
+      }
+    }
+
     localStorage.setItem('current_phishing_scenario', JSON.stringify(selectedEmail));
     navigate('/payment');
   };
@@ -421,7 +434,7 @@ const MainApp = () => {
   const handleTabClick = (tabId) => {
     setActiveTab(tabId);
     setIsSidebarOpen(false); 
-    if (tabId === 'inbox') {
+    if (tabId === 'practice' || tabId === 'challenge') {
       handleBackToList();
     } else if (tabId === 'analytics') {
       navigate('/analytics');
@@ -553,7 +566,7 @@ const MainApp = () => {
       case 'analytics': 
         return <Dashboard userId={user?.userId} onBack={handleBackToList} />;
       case 'detail': 
-        return selectedEmail ? <EmailDetail email={selectedEmail} onBack={handleBackToList} onAction={handleAction} onLinkClick={handleLinkClick} onHoverTrack={handleHoverTrack} /> : <div className="flex-1 flex items-center justify-center">載入中...</div>;
+        return selectedEmail ? <EmailDetail email={selectedEmail} onBack={handleBackToList} onAction={handleAction} onLinkClick={handleLinkClick} onHoverTrack={handleHoverTrack} isPracticeMode={activeTab === 'practice'} /> : <div className="flex-1 flex items-center justify-center">載入中...</div>;
       case 'list':
       default: 
         if (isLoading && emails.length === 0) {

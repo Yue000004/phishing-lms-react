@@ -7,8 +7,8 @@ import {
 
 const Sidebar = ({ activeTab = 'inbox', onTabClick, unreadCount = 0 }) => {
   const menuItems = [
-    { id: 'inbox', icon: <MdInbox size={20} />, label: '收件匣', count: unreadCount },
-    { id: 'sandbox', icon: <MdScience size={20} />, label: 'AI 釣魚實驗室' },
+    { id: 'practice', icon: <MdScience size={20} className="text-green-600" />, label: '🔰 新手練習模式' },
+    { id: 'challenge', icon: <MdInbox size={20} className="text-red-500" />, label: '😈 魔王挑戰模式', count: unreadCount },
     { id: 'starred', icon: <MdStarOutline size={20} />, label: '已加星號' },
     { id: 'snoozed', icon: <MdAccessTime size={20} />, label: '延後處理' },
     { id: 'sent', icon: <MdSend size={20} />, label: '已傳送' },

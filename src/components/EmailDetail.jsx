@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useNavigate } from 'react-router-dom';
 import { 
   MdArrowBack, 
   MdArchive, 
   MdReportGmailerrorred, 
   MdDelete, 
-  MdMarkAsUnread, 
-  MdAccessTime, 
-  MdAddTask, 
   MdArrowDropDown,
   MdReply,
   MdForward,
@@ -19,11 +15,18 @@ import {
 
 /**
  * Task 3 & 9: 使用 ReactMarkdown 渲染信件並實作事件代理
+ * 新增 isPracticeMode 功能：新手導覽與互動高亮
  */
-const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => {
+const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack, isPracticeMode = false }) => {
   const [showDetails, setShowDetails] = useState(false);
+  const [guideStep, setGuideStep] = useState(1);
   const contentRef = useRef(null);
   const hoverTimerRef = useRef(null);
+
+  // 當信件切換時，自動將導覽步驟重設回第一步
+  useEffect(() => {
+    setGuideStep(1);
+  }, [email]);
 
   // Task 3: 攔截點擊
   const handleBodyClick = (e) => {
@@ -41,7 +44,6 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
     const target = e.target.closest('a, button, .phishing-link');
     if (target) {
       const href = target.getAttribute('href') || '模擬連結';
-      // 顯示左下角狀態列 (回報給 App.jsx)
       if (onHoverTrack) onHoverTrack(href, true);
     }
   };
@@ -106,10 +108,113 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
 
       {/* 信件內容區 */}
       <div className="flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-xl md:text-2xl font-normal text-gray-900 mb-6 md:mb-8 md:ml-14 italic font-black">{email?.subject}</h1>
+        {/* 新手引導導覽橫幅 */}
+        {isPracticeMode && (
+          <div className="mx-auto max-w-4xl bg-blue-50 border-2 border-blue-100 rounded-2xl p-5 mb-6 text-sm text-slate-800 shadow-sm animate-fade-in">
+            <div className="flex justify-between items-center mb-2">
+              <span className="font-black text-blue-800 flex items-center gap-1.5 text-base">
+                <span>🔰</span> <span>新手防詐引導練習 (步驟 {guideStep} / 3)</span>
+              </span>
+              <button 
+                onClick={() => setGuideStep(0)} 
+                className="text-gray-400 hover:text-gray-600 font-bold text-xs"
+              >
+                關閉引導
+              </button>
+            </div>
+            
+            <div className="leading-relaxed mb-4 text-gray-700">
+              {guideStep === 1 && (
+                <div>
+                  <strong>第一步：觀察寄件者來源</strong><br />
+                  請檢視下方 <span className="bg-yellow-200 text-yellow-900 px-1.5 py-0.5 font-bold rounded">發黃光的寄件人資料欄位</span>。<br />
+                  {email.isPhishing ? (
+                    <span> 💡 此信件聲稱來自知名品牌，但寄件地址 <code>{email.senderEmail}</code> 卻使用非官方網域，這是非常典型的冒充手法！</span>
+                  ) : (
+                    <span> 💡 寄件者地址為 <code>{email.senderEmail}</code>，屬於該機構的真實網域，安全無虞。</span>
+                  )}
+                </div>
+              )}
+              {guideStep === 2 && (
+                <div>
+                  <strong>第二步：檢視急迫語氣或字眼</strong><br />
+                  請檢視信件下方 <span className="bg-red-200 text-red-900 px-1.5 py-0.5 font-bold rounded">發紅光的主旨標題</span>。<br />
+                  {email.isPhishing ? (
+                    <span> 💡 釣魚信件常使用「立即驗證」、「限時停用」或「警告」等聳動字詞，藉此激發您的恐懼或急迫感，誘使您在慌亂中點擊連結。</span>
+                  ) : (
+                    <span> 💡 信件主旨表達溫和且具備行政公文常態，沒有惡意催促或恐嚇的成分。</span>
+                  )}
+                </div>
+              )}
+              {guideStep === 3 && (
+                <div>
+                  <strong>第三步：懸停超連結核對</strong><br />
+                  請將滑鼠移到信件主體中 <span className="bg-blue-200 text-blue-900 px-1.5 py-0.5 font-bold rounded">閃爍藍光的超連結</span> 上（不要點選），並觀察<strong>左下角的預覽網址</strong>。<br />
+                  {email.isPhishing ? (
+                    <span> 💡 連結指向的真實目標是 <code>{email.senderEmail?.includes('cathay') ? 'cathay-bk-verify.net' : 'shoppe-verify.net'}</code> 等偽造網域，並非真實品牌網站！</span>
+                  ) : (
+                    <span> 💡 連結指向正確的官方頁面（如電商或學校官方主網域），安全度高。</span>
+                  )}
+                </div>
+              )}
+              {guideStep === 0 && (
+                <div>
+                  <strong>引導已完成！請做出決定：</strong><br />
+                  現在請依據您學到的指標，在右上角點擊：
+                  若此信有破綻請按 <span className="text-red-600 font-bold">標示釣魚</span>；若確定無害請按 <span className="text-green-600 font-bold">安全信件</span>。
+                </div>
+              )}
+            </div>
 
-          <div className="flex items-start gap-3 md:gap-4 mb-8">
+            <div className="flex gap-2">
+              {guideStep > 1 && (
+                <button 
+                  onClick={() => setGuideStep(prev => prev - 1)}
+                  className="bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                >
+                  上一步
+                </button>
+              )}
+              {guideStep > 0 && guideStep < 3 && (
+                <button 
+                  onClick={() => setGuideStep(prev => prev + 1)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  下一步
+                </button>
+              )}
+              {guideStep === 3 && (
+                <button 
+                  onClick={() => setGuideStep(0)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm"
+                >
+                  完成引導，前往答題
+                </button>
+              )}
+              {guideStep === 0 && (
+                <button 
+                  onClick={() => setGuideStep(1)}
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all"
+                >
+                  重新引導
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-4xl mx-auto">
+          {/* 主旨：在第二步時會發紅光高亮 */}
+          <h1 className={`text-xl md:text-2xl font-normal text-gray-900 mb-6 md:mb-8 md:ml-14 italic font-black transition-all duration-300 ${
+            (isPracticeMode && guideStep === 2) ? 'bg-red-100 text-red-950 p-3 rounded-2xl ring-2 ring-red-400 shadow-md scale-[1.01]' : ''
+          }`}>
+            {email?.subject}
+          </h1>
+
+          {/* 寄件人：在第一步時會發黃光高亮 */}
+          <div className={`flex items-start gap-3 md:gap-4 mb-8 p-3 rounded-2xl transition-all duration-300 ${
+            (isPracticeMode && guideStep === 1) ? 'bg-yellow-50 text-yellow-950 ring-2 ring-yellow-400 shadow-md scale-[1.01]' : ''
+          }`}>
             <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white text-base md:text-lg flex-shrink-0 font-medium shadow-md">
               {email?.senderName ? email.senderName[0] : 'U'}
             </div>
@@ -140,7 +245,7 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
             </div>
           </div>
 
-          {/* Task 9: Markdown 渲染 + Task 3 事件代理 */}
+          {/* Markdown 渲染：在第三步時，內部的超連結會呈現藍色發光與閃爍 */}
           <div 
             ref={contentRef}
             className="md:ml-14 prose prose-sm sm:prose-base max-w-none text-gray-800"
@@ -154,7 +259,11 @@ const EmailDetail = ({ email, onBack, onAction, onLinkClick, onHoverTrack }) => 
                 a: ({ node, ...props }) => (
                   <a
                     {...props}
-                    className="text-blue-600 hover:text-blue-800 underline cursor-pointer phishing-link"
+                    className={`text-blue-600 hover:text-blue-800 underline cursor-pointer phishing-link transition-all duration-300 ${
+                      (isPracticeMode && guideStep === 3) 
+                        ? 'bg-blue-100 text-blue-900 ring-4 ring-blue-400 px-3 py-1.5 rounded-xl font-black animate-pulse shadow-sm' 
+                        : ''
+                    }`}
                   />
                 )
               }}
