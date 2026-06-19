@@ -56,12 +56,52 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 flex overflow-hidden">
-      {/* Left Side: Form */}
-      <div className="flex-1 flex flex-col justify-start items-center pt-10 pb-32 overflow-y-auto px-4 w-full lg:w-1/2 relative z-10 bg-gray-50">
+    <div className="min-h-screen w-full bg-gray-50 flex flex-col items-center justify-start pt-10 pb-32 overflow-y-auto px-4">
+      {/* Centered Form Container */}
+      <div className="w-full max-w-2xl flex flex-col items-center">
         <div className="sm:mx-auto sm:w-full sm:max-w-md text-center flex-shrink-0 mt-8">
-          <div className="flex justify-center text-blue-600 mb-4 animate-pulse lg:hidden">
-            <MdSecurity size={64} />
+          <div className="flex justify-center mb-4">
+            <svg
+              className="h-16 w-20"
+              viewBox="0 0 120 90"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* 左紅 */}
+              <path
+                d="M10 20 L10 75 L30 75 L30 38 L60 60 L60 35 L25 10 Z"
+                fill="#EA4335"
+              />
+
+              {/* 右紅 */}
+              <path
+                d="M95 10 L60 35 L60 60 L90 38 L90 75 L110 75 L110 20 Z"
+                fill="#EA4335"
+              />
+
+              {/* 左藍 */}
+              <path
+                d="M10 20 L25 10 L60 35 L95 10 L110 20 L60 55 Z"
+                fill="#4285F4"
+              />
+
+              {/* 左綠 */}
+              <path
+                d="M10 20 L10 28 L60 65 L60 55 Z"
+                fill="#34A853"
+              />
+
+              {/* 右綠 */}
+              <path
+                d="M110 20 L110 28 L60 65 L60 55 Z"
+                fill="#34A853"
+              />
+
+              {/* 黃色中心 */}
+              <path
+                d="M25 10 L60 35 L95 10 L85 10 L60 28 L35 10 Z"
+                fill="#FBBC04"
+              />
+            </svg>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight">建立新帳號</h2>
           <p className="mt-2 text-sm text-gray-600 font-medium px-4">
@@ -69,7 +109,7 @@ const Register = () => {
           </p>
         </div>
 
-        <div className="w-full max-w-md mb-32 mt-8 sm:mx-auto pb-10">
+        <div className="w-full mt-8 pb-10">
           <div className="bg-white py-10 px-6 shadow-2xl rounded-3xl border border-gray-100 sm:px-12">
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
@@ -178,7 +218,7 @@ const Register = () => {
                 </div>
               </div>
 
-              <div className="pb-20">
+              <div className="pt-4">
                 <button
                   type="submit"
                   className="w-full flex justify-center py-4 px-4 border border-transparent rounded-2xl shadow-xl text-lg font-black text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform active:scale-95 transition-all"
@@ -196,29 +236,6 @@ const Register = () => {
                 </Link>
               </p>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Side: Visual Design */}
-      <div className="hidden lg:flex w-1/2 bg-blue-600 items-center justify-center relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 to-indigo-900 opacity-90"></div>
-        <div className="absolute w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-        <div className="relative z-10 text-center text-white p-12 max-w-lg">
-          <div className="bg-white/10 p-6 rounded-full inline-block mb-8 shadow-2xl backdrop-blur-sm border border-white/20">
-            <MdSecurity size={80} className="text-white drop-shadow-lg" />
-          </div>
-          <h1 className="text-5xl font-black mb-6 tracking-tight drop-shadow-md">
-            Phishing Defense LMS
-          </h1>
-          <p className="text-lg text-blue-100 leading-relaxed mb-8">
-            透過 AI 生成的個性化演練，提升您在真實工作場景中的資安警覺性。
-          </p>
-          <div className="grid grid-cols-2 gap-4 text-sm font-bold">
-            <div className="bg-black/20 p-4 rounded-2xl backdrop-blur border border-white/10">🎯 個性化情境</div>
-            <div className="bg-black/20 p-4 rounded-2xl backdrop-blur border border-white/10">🤖 雙引擎生成</div>
-            <div className="bg-black/20 p-4 rounded-2xl backdrop-blur border border-white/10">📊 行為分析</div>
-            <div className="bg-black/20 p-4 rounded-2xl backdrop-blur border border-white/10">🛡️ 實戰演練</div>
           </div>
         </div>
       </div>

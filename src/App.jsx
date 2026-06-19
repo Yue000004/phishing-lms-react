@@ -99,7 +99,7 @@ const MainApp = () => {
    */
 
 
-  const fetchNewEmails = async (count = 10) => {
+  const fetchNewEmails = async (count = 5) => {
     if (isGenerating || hasStartedFetching.current) return;
     setIsGenerating(true);
     hasStartedFetching.current = true;
@@ -112,8 +112,20 @@ const MainApp = () => {
     try {
       const results = [];
 
-      for (let i = 0; i < count; i++) {
-        const type = Math.random() < 0.2 ? 'phishing' : 'safe';
+      const emailTypes = [
+        'phishing',
+        'safe',
+        'safe',
+        'safe',
+        'safe'
+      ];
+
+      // 隨機打亂順序
+      emailTypes.sort(() => Math.random() - 0.5);
+
+      for (let i = 0; i < emailTypes.length; i++) {
+
+        const type = emailTypes[i];
 
         try {
           const response = await apiClient.post(
@@ -221,8 +233,8 @@ const MainApp = () => {
         setEmails(Array.isArray(historyEmails) ? historyEmails : []);
         setIsInitialized(true);
 
-        if (historyEmails.length < 3) {
-          await fetchNewEmails(10 - historyEmails.length);
+        if (historyEmails.length < 5) {
+          await fetchNewEmails(5 - historyEmails.length);
         }
       } catch (error) {
         console.error('Failed to load history:', error);
@@ -239,7 +251,7 @@ const MainApp = () => {
 
   // Task 7: 監聽 length，自動補充 (確保已初始化)
   useEffect(() => {
-    if (isInitialized && emails.length <= 1 && user && !hasStartedFetching.current && !isGenerating && !isLoading) {
+    if (false &&isInitialized && emails.length <= 1 && user && !hasStartedFetching.current && !isGenerating && !isLoading) {
       fetchNewEmails(2);
     }
   }, [emails.length, user, isGenerating, isLoading, isInitialized]);

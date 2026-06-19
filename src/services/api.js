@@ -48,4 +48,13 @@ export const recordUserBehavior = async (data) => {
   }
 };
 
+export const generateEmailBatch = async (params) => {
+  const response = await apiClient.post(
+    '/phishing/generate-batch',
+    params
+  );
+
+  return response.data;
+};
+
 export default apiClient;

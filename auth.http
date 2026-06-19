@@ -1,11 +1,9 @@
-POST http://localhost:5000/api/auth/register
+POST http://localhost:5000/api/phishing/generate
 Content-Type: application/json
 
 {
-  "name":"測試",
-  "email":"test@gmail.com",
-  "password":"123456",
-  "gender":"男",
-  "occupation":"學生",
-  "interests":["遊戲","投資"]
+  "scenario": "隨機金融詐騙",
+  "difficulty": "高",
+  "occupation": "學生",
+  "type": "phishing"
 }

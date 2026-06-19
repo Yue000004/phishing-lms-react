@@ -28,6 +28,18 @@ app.get('/api/dashboard/summary', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   const { db } = require('./config/firebase');
+  if (!db) {
+  return res.json({
+    success: true,
+    data: [],
+    summary: {
+      avgStayDuration: "0.0",
+      urlCheckRate: 0,
+      totalAttempts: 0,
+      note: "firebase disabled"
+    }
+  });
+}
   res.status(200).json({ 
     status: 'ok', 
     message: 'Phishing Sandbox Backend is running!',

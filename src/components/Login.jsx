@@ -46,8 +46,48 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 overflow-y-auto">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="flex justify-center text-blue-600 mb-4 animate-bounce">
-          <MdSecurity size={64} />
+        <div className="flex justify-center mb-4">
+          <svg
+            className="h-16 w-20"
+            viewBox="0 0 120 90"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            {/* 左紅 */}
+            <path
+              d="M10 20 L10 75 L30 75 L30 38 L60 60 L60 35 L25 10 Z"
+              fill="#EA4335"
+            />
+
+            {/* 右紅 */}
+            <path
+              d="M95 10 L60 35 L60 60 L90 38 L90 75 L110 75 L110 20 Z"
+              fill="#EA4335"
+            />
+
+            {/* 左藍 */}
+            <path
+              d="M10 20 L25 10 L60 35 L95 10 L110 20 L60 55 Z"
+              fill="#4285F4"
+            />
+
+            {/* 左綠 */}
+            <path
+              d="M10 20 L10 28 L60 65 L60 55 Z"
+              fill="#34A853"
+            />
+
+            {/* 右綠 */}
+            <path
+              d="M110 20 L110 28 L60 65 L60 55 Z"
+              fill="#34A853"
+            />
+
+            {/* 黃色中心 */}
+            <path
+              d="M25 10 L60 35 L95 10 L85 10 L60 28 L35 10 Z"
+              fill="#FBBC04"
+            />
+          </svg>
         </div>
         <h2 className="text-4xl font-black text-gray-900 tracking-tight">登入系統</h2>
         <p className="mt-2 text-sm text-gray-600 font-medium">

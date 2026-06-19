@@ -95,6 +95,7 @@ router.post('/generate', async (req, res) => {
       
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       phishingData = JSON.parse(jsonMatch ? jsonMatch[0] : responseText);
+      console.log("[AI DEBUG] Gemini Keys Count:", geminiKeys.length);
       console.log(`✅ Gemini 生成成功！ (Key Index: ${currentGeminiIndex})`);
 
     } catch (geminiError) {
@@ -476,5 +477,71 @@ router.get('/stats/:userId', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+router.post('/generate-batch', async (req, res) => {
+  try {
+
+    const {
+      scenario,
+      difficulty,
+      occupation,
+      interests,
+      userId
+    } = req.body;
+
+    const results = [];
+
+    const types = [
+      'phishing',
+      'safe',
+      'safe',
+      'safe',
+      'safe'
+    ];
+
+    // 洗牌
+    types.sort(() => Math.random() - 0.5);
+
+    for (const type of types) {
+
+      const response = await fetch(
+        `${req.protocol}://${req.get('host')}/api/phishing/generate`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            scenario,
+            difficulty,
+            occupation,
+            interests,
+            userId,
+            type
+          })
+        }
+      );
+
+      const email = await response.json();
+
+      results.push(email);
+    }
+
+    res.json({
+      success: true,
+      count: 5,
+      emails: results
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+api.js});
 
 module.exports = router;
