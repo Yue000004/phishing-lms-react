@@ -67,6 +67,10 @@ const MainApp = () => {
 
   const currentOtpCode = useMemo(() => Math.floor(100000 + Math.random() * 900000).toString(), [location.pathname]);
 
+  const unreadCount = useMemo(() => {
+    return emails.filter(e => !e.isResolved).length;
+  }, [emails]);
+
   // Sync selectedEmail with URL if in detail view
   useEffect(() => {
     if (view === 'detail') {
@@ -590,7 +594,7 @@ const MainApp = () => {
             md:translate-x-0 transition-transform duration-300 ease-in-out
             fixed md:relative z-40 bg-white h-full shadow-2xl md:shadow-none border-r border-gray-100 w-64
           `}>
-            <Sidebar activeTab={activeTab} onTabClick={handleTabClick} />
+            <Sidebar activeTab={activeTab} onTabClick={handleTabClick} unreadCount={unreadCount} />
           </div>
         )}
         

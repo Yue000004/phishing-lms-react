@@ -1,5 +1,6 @@
 import React from 'react';
 import { Menu, Search, SlidersHorizontal, HelpCircle, Settings, Grid } from 'lucide-react';
+import GmailLogo from './GmailLogo';
 
 const Header = ({ onMenuClick }) => {
   return (
@@ -18,47 +19,7 @@ const Header = ({ onMenuClick }) => {
           <Menu size={20} />
         </button>
         <div className="flex items-center ml-2 cursor-pointer">
-          <svg
-            className="h-8 w-10"
-            viewBox="0 0 120 90"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* 左紅 */}
-            <path
-              d="M10 20 L10 75 L30 75 L30 38 L60 60 L60 35 L25 10 Z"
-              fill="#EA4335"
-            />
-
-            {/* 右紅 */}
-            <path
-              d="M95 10 L60 35 L60 60 L90 38 L90 75 L110 75 L110 20 Z"
-              fill="#EA4335"
-            />
-
-            {/* 左藍 */}
-            <path
-              d="M10 20 L25 10 L60 35 L95 10 L110 20 L60 55 Z"
-              fill="#4285F4"
-            />
-
-            {/* 左綠 */}
-            <path
-              d="M10 20 L10 28 L60 65 L60 55 Z"
-              fill="#34A853"
-            />
-
-            {/* 右綠 */}
-            <path
-              d="M110 20 L110 28 L60 65 L60 55 Z"
-              fill="#34A853"
-            />
-
-            {/* 黃色中心 */}
-            <path
-              d="M25 10 L60 35 L95 10 L85 10 L60 28 L35 10 Z"
-              fill="#FBBC04"
-            />
-          </svg>
+          <GmailLogo className="h-8 w-8" />
           <span className="text-xl ml-2 text-gray-700 font-medium tracking-tight">Gmail</span>
         </div>
       </div>

@@ -17,6 +17,10 @@ router.post('/generate', async (req, res) => {
     const { scenario, difficulty, occupation, interests, userId, type = 'phishing' } = req.body;
 
     const isPhishing = type === 'phishing';
+    
+    // Dynamic Date Calculation
+    const now = new Date();
+    const currentDateStr = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日`;
 
     const profileContext = `
       【受害者個人輪廓】
@@ -25,11 +29,10 @@ router.post('/generate', async (req, res) => {
     `;
 
     const phishingScenarios = `
-      1. 銀行帳戶異常：偵測到海外登入、帳號即將凍結（模仿國泰世華、中信等）。
-      2. 信用卡驗證：響應防詐政策、3D Secure 驗證更新（模仿台新、玉山等）。
-      3. 網購付款失敗：蝦皮、PChome 訂單未成功，需重新驗證信用卡。
-      4. LINE Pay：付款功能即將停用、帳戶資訊不全，請重新驗證。
-      5. 投資詐騙：AI 量化投資、保證獲利 20%、領取試用金。
+      1. 信用卡交易異常警示：偵測到一筆海外或未授權的信用卡扣款交易，要求持卡人限時點擊連結驗證或取消交易，否則視為本人授權。
+      2. 信用卡 3D Secure 安全驗證協議升級：宣稱響應防詐新規，持卡人需點擊連結完成信用卡安全協議升級認證。
+      3. 網購付款/授權失敗：宣稱某電商（如蝦皮、PChome、Momo）訂單之信用卡付款未成功或授權失敗，要求點擊連結重新補填信用卡與驗證資訊以利出貨。
+      4. 訂閱帳戶（如 Netflix、Spotify）扣款失敗：宣稱訂閱扣款信用卡遭拒，需限時點擊連結重新填寫信用卡與驗證資訊以避免服務遭中斷。
     `;
 
     const safeScenarios = `
@@ -42,14 +45,16 @@ router.post('/generate', async (req, res) => {
     const systemPrompt = `
       你是一位精通資安教育與社會工程學的專家。請生成一封用於演練的郵件。
       類型：${isPhishing ? '【釣魚郵件】' : '【正常安全郵件】'}
-      情境：${scenario || (isPhishing ? '隨機金融詐騙' : '日常行政通知')}
+      情境：${isPhishing ? '金融與信用卡交易驗證/異常處理相關' : (scenario || '日常行政通知')}
       難度：${difficulty || '高'}
+
+      【目前系統時間】：${currentDateStr} （信件內容若包含日期或限時資訊，必須以該時間為基準或稍微往後推算，使其看起來是「最近、即時或今天」發生的，絕對不可出現 2024 年或更早的年份，年份應符合 ${now.getFullYear()} 年或更晚）。
 
       ${profileContext}
 
       ${isPhishing ? `
       【釣魚郵件規範】：
-      1. 針對以下情境之一：${phishingScenarios}
+      1. 針對以下情境之一，且「必須」圍繞在需要使用信用卡付款、驗證、補卡或取消授權等主題：${phishingScenarios}
       2. 絕不可使用真實品牌 URL，但要模仿得極像（如 Shopee 改為 Shoppe-verify.net）。
       3. 內文必須包含誘導點擊的連結 [連結文字](模擬 URL)。
       4. 誘餌策略：整合【貪婪】、【恐懼】、【好奇】或【急迫】。

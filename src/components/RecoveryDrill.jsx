@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdPhone, MdClose, MdError, MdArrowForward, MdSms } from 'react-icons/md';
+import { MdPhone, MdClose, MdError, MdSms } from 'react-icons/md';
 
 const RecoveryDrill = ({ onComplete }) => {
   const [timeLeft, setTimeLeft] = useState(30);
   const [status, setStatus] = useState('active'); // 'active' | 'success' | 'fail'
   const [showLure, setShowLure] = useState(false);
+  const [dialedNumber, setDialedNumber] = useState('');
 
   useEffect(() => {
     if (timeLeft > 0 && status === 'active') {
@@ -28,6 +29,33 @@ const RecoveryDrill = ({ onComplete }) => {
   const handleFail = (reason) => {
     setStatus('fail');
     setTimeout(() => onComplete('fail', reason), 2000);
+  };
+
+  const handleKeyClick = (key) => {
+    if (status !== 'active') return;
+    if (key === 'C') {
+      setDialedNumber('');
+    } else if (key === '⌫') {
+      setDialedNumber(prev => prev.slice(0, -1));
+    } else {
+      if (dialedNumber.length < 15) {
+        setDialedNumber(prev => prev + key);
+      }
+    }
+  };
+
+  const handleDial = () => {
+    if (status !== 'active') return;
+    if (!dialedNumber) {
+      alert('請先輸入撥打號碼！');
+      return;
+    }
+    // Correct actions: dialing 165 (Anti-fraud) or police 110, or typical bank hotline (starts with 0800)
+    if (dialedNumber === '165' || dialedNumber.startsWith('0800') || dialedNumber === '110') {
+      handleCorrectAction();
+    } else {
+      handleFail(`撥打到無效或錯誤的號碼: ${dialedNumber}`);
+    }
   };
 
   return (
@@ -70,84 +98,118 @@ const RecoveryDrill = ({ onComplete }) => {
 
           <p className="text-gray-300 text-sm leading-relaxed">
             系統偵測到一筆 <span className="text-white font-bold">NT$ 150,000</span> 的異常交易。<br />
-            請立即使用您的手機進行「掛失處理」。
+            請立即利用虛擬手機撥打 <span className="text-red-400 font-bold">165 反詐騙專線</span> 或 <span className="text-red-400 font-bold">銀行免付費客服 (0800-XXX-XXX)</span> 辦理信用卡掛失止付！
           </p>
         </div>
 
         {/* 右側：互動手機 */}
         <div className="relative">
-          {/* 誘餌通知 (Lure) */}
-          <AnimatePresence>
-            {showLure && status === 'active' && (
-              <motion.div
-                initial={{ x: 100, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                exit={{ x: 100, opacity: 0 }}
-                onClick={() => handleFail('誤點二次詐騙連結')}
-                className="absolute -left-20 top-20 z-50 bg-white rounded-xl p-4 shadow-2xl cursor-pointer hover:bg-red-50 transition-colors border-2 border-red-500 w-64 group"
-              >
-                <div className="flex items-center gap-2 mb-1 text-red-600">
-                  <MdSms size={18} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">系統通知</span>
-                </div>
-                <div className="text-sm font-bold text-gray-900 group-hover:text-red-600 transition-colors">
-                  [緊急] 偵測到盜刷，點此立即申請全額退款
-                </div>
-                <div className="mt-2 text-[10px] text-gray-400">
-                  * 駭客常用的二次詐騙手法
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* 虛擬手機 */}
           <div className="w-[300px] h-[600px] bg-black rounded-[50px] border-[8px] border-[#222] shadow-2xl overflow-hidden relative flex flex-col">
             {/* Phone Notch */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-black rounded-b-2xl z-20"></div>
 
+            {/* 簡訊通知 Banner - 從手機內部滑出 */}
+            <AnimatePresence>
+              {showLure && status === 'active' && (
+                <motion.div
+                  initial={{ y: -100, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -100, opacity: 0 }}
+                  onClick={() => handleFail('誤點二次詐騙連結')}
+                  className="absolute left-3 right-3 top-10 z-50 bg-white/95 backdrop-blur rounded-2xl p-3.5 shadow-2xl cursor-pointer hover:bg-red-50 transition-colors border border-red-500/30 flex flex-col gap-1 group"
+                >
+                  <div className="flex items-center justify-between text-red-600">
+                    <div className="flex items-center gap-1.5">
+                      <MdSms size={16} />
+                      <span className="text-[10px] font-bold uppercase tracking-widest">系統簡訊 (現在)</span>
+                    </div>
+                    {/* 關閉按鈕 */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation(); // 阻止點擊事件氣泡觸發 handleFail
+                        setShowLure(false);
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded-full transition-colors text-gray-400 hover:text-gray-700"
+                    >
+                      <MdClose size={12} />
+                    </button>
+                  </div>
+                  <div className="text-xs font-bold text-gray-900 group-hover:text-red-600 transition-colors leading-snug">
+                    [緊急] 偵測到您的帳戶發生重大盜刷！請點此完成全額退款申請並撤銷扣款。
+                  </div>
+                  <div className="text-[9px] text-gray-400">
+                    ⚠️ 警示：此為駭客慣用之二次詐騙簡訊，請勿點擊
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="flex-1 bg-[#0a0a0a] flex flex-col p-6 pt-12">
               {status === 'active' && (
                 <>
-                  <div className="text-center mb-12">
-                    <h3 className="text-white text-xl font-bold mb-2">虛擬撥號</h3>
-                    <p className="text-gray-500 text-xs">撥打 24H 銀行客服中心進行掛失</p>
+                  <div className="text-center mb-4">
+                    <h3 className="text-white text-lg font-bold mb-1">虛擬撥號鍵盤</h3>
+                    <p className="text-gray-500 text-[10px]">輸入 165 或銀行免付費專線辦理掛失</p>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 mb-12">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, '*', 0, '#'].map(num => (
-                      <div key={num} className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center text-white text-xl hover:bg-white/20 cursor-pointer transition-colors font-medium">
-                        {num}
-                      </div>
+                  {/* 顯示撥打的電話號碼 */}
+                  <div className="text-white text-3xl font-mono text-center tracking-wider h-12 flex items-center justify-center gap-2 mb-4 bg-white/5 rounded-xl border border-white/10 px-2">
+                    {dialedNumber || <span className="text-gray-600 text-lg font-sans">請輸入號碼</span>}
+                  </div>
+
+                  {/* 撥號鍵盤區 */}
+                  <div className="grid grid-cols-3 gap-y-3 gap-x-5 justify-items-center mb-6">
+                    {[
+                      '1', '2', '3',
+                      '4', '5', '6',
+                      '7', '8', '9',
+                      'C', '0', '⌫'
+                    ].map(key => (
+                      <button
+                        key={key}
+                        onClick={() => handleKeyClick(key)}
+                        className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold transition-all transform active:scale-95 ${
+                          key === 'C' 
+                            ? 'bg-red-950/40 text-red-400 border border-red-900/30 hover:bg-red-900/30' 
+                            : key === '⌫' 
+                            ? 'bg-gray-800 text-gray-300 hover:bg-gray-700' 
+                            : 'bg-white/5 text-white hover:bg-white/15'
+                        }`}
+                      >
+                        {key}
+                      </button>
                     ))}
                   </div>
 
+                  {/* 撥打綠色按鍵 */}
                   <button 
-                    onClick={handleCorrectAction}
-                    className="mt-auto bg-green-500 hover:bg-green-600 text-white w-full py-5 rounded-3xl flex items-center justify-center gap-3 shadow-lg shadow-green-500/20 active:scale-95 transition-all"
+                    onClick={handleDial}
+                    className="mt-auto bg-green-500 hover:bg-green-600 text-white w-full py-4 rounded-2xl flex items-center justify-center gap-3 shadow-lg shadow-green-500/20 active:scale-95 transition-all"
                   >
                     <MdPhone size={24} className="animate-bounce" />
-                    <span className="text-lg font-bold">撥打銀行掛失專線</span>
+                    <span className="text-base font-bold">撥號驗證</span>
                   </button>
                 </>
               )}
 
               {status === 'success' && (
                 <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in">
-                  <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-6">
+                  <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-green-500/30">
                     <MdPhone size={40} className="text-white" />
                   </div>
-                  <h3 className="text-green-500 text-2xl font-bold mb-2">已成功掛失</h3>
-                  <p className="text-gray-400 text-sm">正在為您聯繫銀行專員...</p>
+                  <h3 className="text-green-500 text-2xl font-bold mb-2">已成功掛失 / 聯防</h3>
+                  <p className="text-gray-400 text-sm">正在成功為您止血資金...</p>
                 </div>
               )}
 
               {status === 'fail' && (
                 <div className="flex-1 flex flex-col items-center justify-center text-center animate-fade-in">
-                  <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mb-6">
+                  <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-red-500/30">
                     <MdClose size={40} className="text-white" />
                   </div>
-                  <h3 className="text-red-500 text-2xl font-bold mb-2">止血失敗</h3>
-                  <p className="text-gray-400 text-sm italic">您剛才的決定讓損害擴大了</p>
+                  <h3 className="text-red-500 text-2xl font-bold mb-2">二次受騙 / 止血失敗</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">您的動作慢了，或誤信二次退款簡訊陷阱，資金已遭全數轉移。</p>
                 </div>
               )}
             </div>

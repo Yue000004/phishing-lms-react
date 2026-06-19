@@ -5,9 +5,9 @@ import {
   MdAnalytics, MdScience 
 } from 'react-icons/md';
 
-const Sidebar = ({ activeTab = 'inbox', onTabClick }) => {
+const Sidebar = ({ activeTab = 'inbox', onTabClick, unreadCount = 0 }) => {
   const menuItems = [
-    { id: 'inbox', icon: <MdInbox size={20} />, label: '收件匣', count: 3 },
+    { id: 'inbox', icon: <MdInbox size={20} />, label: '收件匣', count: unreadCount },
     { id: 'sandbox', icon: <MdScience size={20} />, label: 'AI 釣魚實驗室' },
     { id: 'starred', icon: <MdStarOutline size={20} />, label: '已加星號' },
     { id: 'snoozed', icon: <MdAccessTime size={20} />, label: '延後處理' },

@@ -16,67 +16,13 @@ const PaymentGateway = ({ amount = '2,990', onNext, onReport }) => {
     }
   });
 
-  // Dynamic Branding Logic - Safely derived
+  // Unified Branding Logic for standard 3D Secure Verification
   const getBrandTheme = () => {
-    // Robust null check and string joining
-    const subject = emailData?.subject || '';
-    const sender = emailData?.senderName || '';
-    const body = emailData?.bodyMarkdown || '';
-    const text = `${subject} ${sender} ${body}`.toLowerCase();
-
-    if (text.includes('thsrc') || text.includes('高鐵')) {
-      return {
-        name: '台灣高鐵 THSRC',
-        color: 'bg-[#f58220]', 
-        accent: 'text-[#f58220]',
-        merchant: '台灣高速鐵路股份有限公司'
-      };
-    }
-    if (text.includes('netflix') || text.includes('n3tf1ix')) {
-      return {
-        name: 'Netflix Payments',
-        color: 'bg-[#E50914]',
-        accent: 'text-[#E50914]',
-        merchant: 'Netflix Entertainment Taiwan'
-      };
-    }
-    if (text.includes('國泰') || text.includes('cathay')) {
-      return {
-        name: '國泰世華銀行 Cathay United Bank',
-        color: 'bg-[#009241]', 
-        accent: 'text-[#009241]',
-        merchant: '國泰世華金流驗證系統'
-      };
-    }
-    if (text.includes('中信') || text.includes('ctbc')) {
-      return {
-        name: '中國信託 CTBC Bank',
-        color: 'bg-[#004a31]', 
-        accent: 'text-[#004a31]',
-        merchant: '中國信託信用卡驗證中心'
-      };
-    }
-    if (text.includes('蝦皮') || text.includes('shopee')) {
-      return {
-        name: 'Shopee Pay',
-        color: 'bg-[#ee4d2d]', 
-        accent: 'text-[#ee4d2d]',
-        merchant: '樂購蝦皮股份有限公司'
-      };
-    }
-    if (text.includes('line pay')) {
-      return {
-        name: 'LINE Pay',
-        color: 'bg-[#00b900]', 
-        accent: 'text-[#00b900]',
-        merchant: '連信股份有限公司 (LINE Pay)'
-      };
-    }
     return {
-      name: '安全支付確認',
-      color: 'bg-[#1a73e8]',
-      accent: 'text-blue-600',
-      merchant: '第三方合作金流商'
+      name: '3D Secure 國際安全線上支付驗證碼服務',
+      color: 'bg-[#0f265c]', 
+      accent: 'text-[#0f265c]',
+      merchant: emailData?.senderName || '模擬演練特定商家 (Simulated Merchant)'
     };
   };
 
